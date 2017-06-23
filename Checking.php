@@ -12,6 +12,7 @@ class Checking {
     private $tmpDir;
     private $reportDir;
     private $dirList = array();
+    private $dir;
         
     
     public function __construct(){
@@ -38,10 +39,11 @@ class Checking {
      * @return type
      */
     public function startChecking(string $dir){
-     
+             
         $mimeTypes = $this->getMIME();
         $this->dirList = $this->getFileList($dir, true);
-     
+        $this->dir = $dir;
+        
         if(empty($this->dirList)){
             echo "\nERROR!!!! there are no files!!! \n\n";
             return;
@@ -126,12 +128,12 @@ class Checking {
             $fileList .= "</thead>\n";
             $fileList .= "<tbody>\n";
             $fileList .= "<tr>\n";
-            $fileList .= "<td>{$k}</td>\n";
-            $fileList .= "<td>{$fileCount}</td>\n";
-            $fileList .= "<td>{$fileSumSize}</td>\n";
-            $fileList .= "<td>{$avgSize}</td>\n";
-            $fileList .= "<td>{$min}</td>\n";
-            $fileList .= "<td>{$max}</td>\n";
+            $fileList .= "<td width='10%'>{$k}</td>\n";
+            $fileList .= "<td width='18%'>{$fileCount}</td>\n";
+            $fileList .= "<td width='18%'>".number_format(round($fileSumSize, 2),0,",",".")." byte</td>\n";
+            $fileList .= "<td width='18%'>".number_format(round($avgSize, 2),0,",",".")." byte</td>\n";
+            $fileList .= "<td width='18%'>".number_format(round($min, 2),0,",",".")." byte</td>\n";
+            $fileList .= "<td width='18%'>".number_format(round($max, 2),0,",",".")." byte</td>\n";
             $fileList .= "</tr>\n";
             $fileList .= "</tbody>\n";
             $fileList .= "</table>\n\n";        
@@ -196,10 +198,8 @@ class Checking {
         //open and extract the zip files
         $pbZip = new \ProgressBar\Manager(0, count($zipFiles));
         
-        foreach($zipFiles as $f){            
+        foreach($zipFiles as $f){
             $pbZip->advance();
-            
-            //if ($za->open($f, \ZIPARCHIVE::CREATE | \ZIPARCHIVE::OVERWRITE) !== TRUE) {
             if ($za->open($f, \ZIPARCHIVE::CREATE) !== TRUE) {
                 $this->errors['ZipFileError'][] = $f;
             }else {
@@ -309,7 +309,7 @@ class Checking {
                         $pdfFiles[] = $file["name"];
                     }
                     
-                    if($file['extension'] == "xlsx" && $file['type'] == "application/CDFV2-encrypted"){
+                    if(($file['extension'] == "xlsx" || $file['extension'] == "docx")&& $file['type'] == "application/CDFV2-encrypted"){
                         $this->errors['xlsxPW'][] = $file["name"];
                     }
                 }
@@ -396,54 +396,80 @@ class Checking {
         }
         $dirArr = array();
         $fileArr = array();
+        
         //create file and dir array for the lists
-        foreach($this->dirList as $file) {
-            if($file['type'] == "dir"){
-                $dirArr[] = $file;
+        foreach($this->dirList as $file) {            
+            if($file['type'] == "dir"){                
+                //get the folder depth
+                $dirDepth = array();
+                $dir = str_replace($this->dir."/", "", $file["name"]);
+                if(!empty($dir)){
+                    $dirDepth = explode("/", $dir);
+                    $file["dirDepth"] = count(array_filter($dirDepth));
+                }
+                $dirArr[] = $file;                
             }else {
                 $fileArr[] = $file;
             }
         }
-                
-        $fileList = "";        
+        $dirArr[] = array("directory" => $this->dir."/", "name" => $this->dir."/", "filename" => "root_dir");
+        
+        $dirFileSizes = array();        
+        $fileList = "";
         $fileList = '<div class="card" id="filelist">
                         <div class="header">
-                            <h4 class="title">File List</h4>                            
+                            <h4 class="title">File List</h4>
                         </div>
                     <div class="content table-responsive table-full-width" >';
         $fileList .= "<table class=\"table table-hover table-striped\">"
-                . "<h2>Files</h2>\n";        
+                . "<h2>Files</h2>\n";
         $fileList .= "<thead>\n";
         $fileList .= "<tr><th><b>Directory</b></th><th><b>Filename</b></th><th><b>Type</b></th><th><b>Size</b></th><th><b>Last Modified</b></th></tr>\n";
         $fileList .= "</thead>\n";
         $fileList .= "<tbody>\n";
         foreach($fileArr as $f){
+            if(isset($dirFileSizes[$f['directory']])){
+                $dirFileSizes[$f['directory']] += $f["size"];
+            }else {
+                $dirFileSizes[$f['directory']] = $f["size"];
+            }
             $fileList .= "<tr>\n";
             $fileList .= "<td>{$f['directory']}</td>\n";
             $fileList .= "<td>{$f['filename']}</td>\n";
             $fileList .= "<td>{$f['type']}</td>\n";
-            $fileList .= "<td>{$f['size']}</td>\n";
-            $fileList .= "<td>".date('r', $f['lastmod'])."</td>\n";            	
+            $fileList .= "<td>".number_format(round($f['size'], 2),0,",",".")." byte</td>\n";
+            $fileList .= "<td>".date('r', $f['lastmod'])."</td>\n";
             $fileList .= "</tr>\n";
         }   
         $fileList .= "</tbody>\n";
         $fileList .= "</table>\n\n";
         
         $fileList .= "<table class=\"table table-hover table-striped\">"
-                . "<h2>Directories</h2>\n";        
+                . "<h2>Directories</h2>\n";
         $fileList .= "<thead>\n";
-        $fileList .= "<tr><th><b>Directory</b></th><th><b>Filename</b></th><th><b>Type</b></th><th><b>Size</b></th><th><b>Last Modified</b></th></tr>\n";
+        $fileList .= "<tr><th><b>Directory</b></th><th><b>SubDir</b></th><th><b>Directory Depth</b></th><th><b>Dir. Sum File Size</b></th><th><b>Last Modified</b></th></tr>\n";
         $fileList .= "</thead>\n";
         $fileList .= "<tbody>\n";
+        
+        
         foreach($dirArr as $d){
+            $dirFS = 0;
+            if(!isset($d["dirDepth"])){ $d["dirDepth"] = 0; }
+            if(!isset($d["lastmod"])){ $lm = ""; }else {$lm = date('r', $d['lastmod']);}
+            
+            if(!empty($dirFileSizes[$d['name']])){
+                $dirFS = $dirFileSizes[$d['name']];
+            }
+            
             $fileList .= "<tr>\n";
             $fileList .= "<td>{$d['directory']}</td>\n";
             $fileList .= "<td>{$d['filename']}</td>\n";
-            $fileList .= "<td>{$d['type']}</td>\n";
-            $fileList .= "<td>{$d['size']}</td>\n";
-            $fileList .= "<td>".date('r', $d['lastmod'])."</td>\n";            	
+            $fileList .= "<td>{$d['dirDepth']}</td>\n";
+            $fileList .= "<td>".number_format(round($dirFS, 2),0,",",".")." byte</td>\n";
+            $fileList .= "<td>{$lm}</td>\n";
             $fileList .= "</tr>\n";
         }   
+        
         $fileList .= "</tbody>\n";
         $fileList .= "</table>\n\n";
         
@@ -546,7 +572,7 @@ class Checking {
             if(!empty($this->errors['xlsxPW']) && count($this->errors['xlsxPW']) > 0){
                 foreach($this->errors['xlsxPW'] as $f){
                     $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR!!!! PW proected XLSX file(s):</td>\n";
+                    $errorList .= "<td>ERROR!!!! Password proected XLSX/DOCX file(s):</td>\n";
                     $errorList .= "<td>{$f}</td>\n";
                     $errorList .= "</tr>\n";
                 }
@@ -605,9 +631,6 @@ class Checking {
                 echo "\nSubDirectory found, checking the contents... \n";
                 $valid = true;
                 
-                //get the folder depth
-                $folder_depth = substr_count($dir , "/");
-                
                 if($recurse && is_readable("$dir$entry/")) { $childrenDir = true;}
                 
                 $retval[] = array(
@@ -617,8 +640,7 @@ class Checking {
                     "size" => 0,
                     "lastmod" => filemtime("$dir$entry"),
                     "valid_file" => $valid,
-                    "filename" => $entry,                    
-                    "dir_depth" => $folder_depth                    
+                    "filename" => $entry                    
                 );
                 
                 if($recurse && is_readable("$dir$entry/")) {
@@ -837,6 +859,9 @@ class Checking {
             'xz'	=>	array('application/x-xz'),
             'wim'	=>	array('application/octet-stream'),
             'bz2'	=>	array('application/x-bzip2'),
+            'owl'       =>      array('application/xml'),
+            'xsl'       =>      array('text/html'),
+            'xsd'       =>      array('application/xml'),
         );
         
     }
