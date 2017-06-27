@@ -77,11 +77,11 @@ class Checking {
             $errorList = $this->generateErrorReport();
             if(!empty($errorList)){
                 $tplE=str_replace("{html_file_content}", $errorList,$template);
-            }else{
-                $tplE=str_replace("{html_file_content}", $errorList,$template);
             }
-            file_put_contents($this->reportDir.'/'.$fn.'/errorList.html', $tplE.PHP_EOL , FILE_APPEND | LOCK_EX);
+        }else{
+            $tplE=str_replace("{html_file_content}", "Error list is empty",$template);
         }
+        file_put_contents($this->reportDir.'/'.$fn.'/errorList.html', $tplE.PHP_EOL , FILE_APPEND | LOCK_EX);
     }
     
     
