@@ -2,9 +2,8 @@
 
 namespace oeaw\checks;
 
-require_once 'ProgressBar/Manager.php';
-require_once 'ProgressBar/Registry.php';
-
+require __DIR__ . '/vendor/autoload.php';
+require __DIR__ . '/vendor/scholarslab/bagit/lib/bagit.php';
 
 class Checking {
     
@@ -13,7 +12,7 @@ class Checking {
     private $reportDir;
     private $dirList = array();
     private $dir;
-        
+    private $bagitFiles = array();
     
     public function __construct(){
                 
@@ -80,6 +79,18 @@ class Checking {
         }
         
         
+    }
+    
+    
+    private function checkBagitFile(string $filename): bool{
+        
+        // use an existing bag
+        $bag = new \BagIt($filename);
+        $bag->validate();    
+        if(count($bag->getBagErrors() > 0)){
+            $this->errors['bagITError'][$filename] = $bag->getBagErrors();
+        }
+        return true;
     }
     
     
@@ -281,18 +292,16 @@ class Checking {
                 $progressBar->advance();
                 
                 if(isset($file['extension'])){
-                    if(!isset($mimeTypes[$file['extension']]) && $file['type'] != "dir"){                
+                    if(!isset($mimeTypes[$file['extension']]) && $file['type'] != "dir"){
                         $this->errors['MIME'][$file['filename']]['filename'] = $file['filename'];
                         $this->errors['MIME'][$file['filename']]['type'] = $file['type'];
-                        $this->errors['MIME'][$file['filename']]['extension'] = $file['extension'];
-                        //echo "\n!!! ERROR !!! WRONG MIME or EXTENSION, please check the report !!! ERROR !!!\n";
+                        $this->errors['MIME'][$file['filename']]['extension'] = $file['extension'];                        
                         //checking the array extensions list too
                     }else if(is_array($mimeTypes[$file['extension']]) 
                             && !in_array($file['type'], $mimeTypes[$file['extension']]) && $file['type'] != "dir"){
                         $this->errors['MIME'][$file['filename']]['filename'] = $file['filename'];
                         $this->errors['MIME'][$file['filename']]['type'] = $file['type'];
                         $this->errors['MIME'][$file['filename']]['extension'] = $file['extension'];
-                        //echo "\n!!! ERROR !!! WRONG MIME or EXTENSION, please check the report !!! ERROR !!!\n";
                     }
                     
                     if(
@@ -316,10 +325,18 @@ class Checking {
 
                 //if the file name is not valid
                 if($file['valid_file'] == false){
-                    $this->errors['WRONGFILES'][] = $file['name'];
-                    //echo "\n!!! ERROR !!! NOT VALID FILES, please check the report !!! ERROR !!!\n";                        
+                    $this->errors['WRONGFILES'][] = $file['name'];                 
                 }
             }
+            
+            if(count($this->bagitFiles) > 0){
+                foreach($this->bagitFiles as $v){
+                    if($this->checkBagitFile($v) === false){
+                        $this->erros['bagitError'][] = $v;
+                    }
+                }                    
+            }
+            
 
             $duplicateFiles = array_count_values($duplicates);
             
@@ -578,6 +595,24 @@ class Checking {
                 }
             }
             
+            if(!empty($this->errors['bagITError']) && count($this->errors['bagITError']) > 0){
+                
+                foreach($this->errors['bagITError'] as $k => $v){                    
+                    $errorList .= "<tr>\n";
+                    $errorList .= "<td>ERROR!!!! BagIT file validation Error: </td>\n";
+                    $errorList .= "<td>BagIT filename: {$k} <br><br>";
+                    $errorList .= "Errors: <br>";
+                        foreach($v as $val){                            
+                            $errorList .= "Filename:{$val[0]} <br> ";
+                            $errorList .= "Error description:{$val[1]} <br> ";
+                        }
+                    $errorList .= "</td>\n";    
+                    $errorList .= "</tr>\n";
+                }
+            }
+            
+            
+            
             $errorList .= "</tbody>\n";
             $errorList .= "</table>\n\n";
             $errorList .= "</div>\n\n";
@@ -660,6 +695,10 @@ class Checking {
                 $extension = explode('.', $entry);
                 $extension = end($extension);
 
+                if (strpos($dir, 'bagit') !== false) {
+                    $this->bagitFiles[] = "$dir$entry";
+                }
+                
                 $retval[] = array(
                     "name" => "$dir$entry",
                     "directory" => "$dir",
@@ -726,7 +765,7 @@ class Checking {
             'swf'	=>	'application/x-shockwave-flash',
             'sit'	=>	'application/x-stuffit',
             'tar'	=>	'application/x-tar',
-            'tgz'	=>	array('application/x-tar', 'application/x-gzip-compressed'),
+            'tgz'	=>	array('application/x-tar', 'application/x-gzip-compressed', 'application/x-gzip'),
             'z'	=>	'application/x-compress',
             'xhtml'	=>	'application/xhtml+xml',
             'xht'	=>	'application/xhtml+xml',
