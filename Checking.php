@@ -57,28 +57,31 @@ class Checking {
         mkdir($this->reportDir.'/'.$fn);
         copy('template/style.css', $this->reportDir.'/'.$fn.'/style.css');
         
+        $template=file_get_contents('template/template.html');
+        
         if(!empty($fList = $this->generateFileListHtml())){
-            $str=file_get_contents('template/template.html');            
-            $str=str_replace("{html_file_content}", $fList,$str);
-            file_put_contents($this->reportDir.'/'.$fn.'/fileList.html', $str.PHP_EOL , FILE_APPEND | LOCK_EX);
+            $tpl=str_replace("{html_file_content}", $fList,$template);
+        }else {
+            $tpl=str_replace("{html_file_content}", "File list is empty",$template);
         }
+        file_put_contents($this->reportDir.'/'.$fn.'/fileList.html', $tpl.PHP_EOL , FILE_APPEND | LOCK_EX);
         
         if(!empty($fTypeList = $this->generateFileTypeList())){
-            $str=file_get_contents('template/template.html');            
-            $str=str_replace("{html_file_content}", $fTypeList,$str);
-            file_put_contents($this->reportDir.'/'.$fn.'/fileTypeList.html', $str.PHP_EOL , FILE_APPEND | LOCK_EX);
+            $tplFL=str_replace("{html_file_content}", $fTypeList,$template);
+        }else{
+            $tplFL=str_replace("{html_file_content}", "File Type list is empty",$template);
         }
+        file_put_contents($this->reportDir.'/'.$fn.'/fileTypeList.html', $tplFL.PHP_EOL , FILE_APPEND | LOCK_EX);
         
         if($this->errors){
             $errorList = $this->generateErrorReport();
             if(!empty($errorList)){
-                $str=file_get_contents('template/template.html');                
-                $str=str_replace("{html_file_content}", $errorList,$str);
-                file_put_contents($this->reportDir.'/'.$fn.'/errorList.html', $str.PHP_EOL , FILE_APPEND | LOCK_EX);
+                $tplE=str_replace("{html_file_content}", $errorList,$template);
+            }else{
+                $tplE=str_replace("{html_file_content}", $errorList,$template);
             }
+            file_put_contents($this->reportDir.'/'.$fn.'/errorList.html', $tplE.PHP_EOL , FILE_APPEND | LOCK_EX);
         }
-        
-        
     }
     
     
@@ -602,16 +605,18 @@ class Checking {
                     $errorList .= "<td>ERROR!!!! BagIT file validation Error: </td>\n";
                     $errorList .= "<td>BagIT filename: {$k} <br><br>";
                     $errorList .= "Errors: <br>";
-                        foreach($v as $val){                            
-                            $errorList .= "Filename:{$val[0]} <br> ";
-                            $errorList .= "Error description:{$val[1]} <br> ";
+                        foreach($v as $val){
+                            if(isset($val[0])){
+                                $errorList .= "Filename:{$val[0]} <br> ";
+                            }
+                            if(isset($val[1])){
+                                $errorList .= "Error description:{$val[1]} <br> ";
+                            }                            
                         }
                     $errorList .= "</td>\n";    
                     $errorList .= "</tr>\n";
                 }
             }
-            
-            
             
             $errorList .= "</tbody>\n";
             $errorList .= "</table>\n\n";
@@ -695,7 +700,7 @@ class Checking {
                 $extension = explode('.', $entry);
                 $extension = end($extension);
 
-                if (strpos($dir, 'bagit') !== false) {
+                if (strpos(strtolower($dir), 'bagit') !== false) {
                     $this->bagitFiles[] = "$dir$entry";
                 }
                 
