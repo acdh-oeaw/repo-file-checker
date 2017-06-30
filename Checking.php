@@ -51,7 +51,6 @@ class Checking {
         $this->checkVirusAndFileExtension($dir);
         $this->checkFiles($mimeTypes);
         
-        
         //create the file list html
         $fn = date('Y_m_d_H_i_s');
         mkdir($this->reportDir.'/'.$fn);
@@ -84,7 +83,13 @@ class Checking {
         file_put_contents($this->reportDir.'/'.$fn.'/errorList.html', $tplE.PHP_EOL , FILE_APPEND | LOCK_EX);
     }
     
-    
+    /**
+     * 
+     * Checks the bagit file, and if there is an error then add it to the errors variable
+     * 
+     * @param string $filename
+     * @return bool
+     */
     private function checkBagitFile(string $filename): bool{
         
         // use an existing bag
@@ -96,7 +101,11 @@ class Checking {
         return true;
     }
     
-    
+    /**
+     * Creates the FileTypeList HTML
+     * 
+     * @return string
+     */
     private function generateFileTypeList(): string {
         if(empty($this->dirList)){
             echo "ERROR!!!! genereateFileTypeList function has no data \n\n".$f;
@@ -234,7 +243,30 @@ class Checking {
         return $pwZips;
     }
     
-    private function checkPdfFiles(array $pdfFiles){        
+    /**
+     * 
+     * Check the pdf files, if some of them contains Password then it will be added to the return array
+     * 
+     * @param array $pdfFiles
+     * @return array
+     */
+    private function checkPdfFiles(array $pdfFiles): array{
+                
+        $pdf = new \FPDI();
+        $filename = "";
+        $return = array();
+
+        foreach($pdfFiles as $file){            
+            try {
+                $filename = $file;
+		$pdf->setSourceFile($file);
+            }catch(\Exception $e) {
+		$return[] = $filename;
+            }
+        }
+        
+        return $return;
+        
     }
    
     /**
@@ -321,6 +353,10 @@ class Checking {
                         $pdfFiles[] = $file["name"];
                     }
                     
+                    if($file['extension'] == "rar" || $file['type'] == "application/rar"){
+                        echo "\n You have RAR Files! Please check them! \n";
+                    }
+                    
                     if(($file['extension'] == "xlsx" || $file['extension'] == "docx")&& $file['type'] == "application/CDFV2-encrypted"){
                         $this->errors['xlsxPW'][] = $file["name"];
                     }
@@ -339,7 +375,6 @@ class Checking {
                     }
                 }                    
             }
-            
 
             $duplicateFiles = array_count_values($duplicates);
             
@@ -367,7 +402,10 @@ class Checking {
             }
             
             if(count($pdfFiles) > 0){
-                $this->checkPdfFiles($pdfFiles);
+                $pdfResult = $this->checkPdfFiles($pdfFiles);
+                if(count($pdfResult) > 0){
+                    $this->errors['PDFError'] = $pdfResult;
+                }
             }
             
             if(empty($this->errors)){
@@ -593,6 +631,15 @@ class Checking {
                 foreach($this->errors['xlsxPW'] as $f){
                     $errorList .= "<tr>\n";
                     $errorList .= "<td>ERROR!!!! Password proected XLSX/DOCX file(s):</td>\n";
+                    $errorList .= "<td>{$f}</td>\n";
+                    $errorList .= "</tr>\n";
+                }
+            }
+            
+            if(!empty($this->errors['PDFError']) && count($this->errors['PDFError']) > 0){
+                foreach($this->errors['PDFError'] as $f){
+                    $errorList .= "<tr>\n";
+                    $errorList .= "<td>ERROR!!!! Password proected PDF file(s):</td>\n";
                     $errorList .= "<td>{$f}</td>\n";
                     $errorList .= "</tr>\n";
                 }
