@@ -124,14 +124,17 @@ class Checking {
                 
         $extensionList = array();
         $directoryList = array();
+        
         foreach($this->dirList as $d){
-            if(isset($d["extension"])){
-                
+            if(isset($d["extension"])){                
                 $extensionList[$d["extension"]][] = $d;
             }else{
                 $directoryList[] = $d;
             }
         }
+        
+        //sort alphabetically the extension array elements
+        $extensionList = ksort($extensionList);
         
         $fileList = '<div class="card" id="fileTypeList">
                         <div class="header">
