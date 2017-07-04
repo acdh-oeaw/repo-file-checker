@@ -1,6 +1,11 @@
 <?php 
 
-namespace oeaw\checks;
+namespace OEAW\Checks;
+
+
+use OEAW\Checks\Misc as MC;
+require_once 'Misc.php';
+
 
 require __DIR__ . '/vendor/autoload.php';
 require __DIR__ . '/vendor/scholarslab/bagit/lib/bagit.php';
@@ -13,6 +18,7 @@ class Checking {
     private $dirList = array();
     private $dir;
     private $bagitFiles = array();
+    private $misc;
     
     public function __construct(){
                 
@@ -29,6 +35,8 @@ class Checking {
         }else {
             die();
         }
+        
+        $this->misc = new MC();
     }
     
     /**
@@ -39,12 +47,13 @@ class Checking {
      */
     public function startChecking(string $dir){
              
-        $mimeTypes = $this->getMIME();
+        
+        $mimeTypes = $this->misc->getMIME();
         $this->dirList = $this->getFileList($dir, true);
         $this->dir = $dir;
         
         if(empty($this->dirList)){
-            echo "\nERROR!!!! there are no files!!! \n\n";
+            echo "\nERROR there are no files!!! \n\n";
             return;
         }
         
@@ -108,7 +117,7 @@ class Checking {
      */
     private function generateFileTypeList(): string {
         if(empty($this->dirList)){
-            echo "ERROR!!!! genereateFileTypeList function has no data \n\n".$f;
+            echo "ERROR genereateFileTypeList function has no data \n\n".$f;
             sleep(1);
             return false;
         }
@@ -117,6 +126,7 @@ class Checking {
         $directoryList = array();
         foreach($this->dirList as $d){
             if(isset($d["extension"])){
+                
                 $extensionList[$d["extension"]][] = $d;
             }else{
                 $directoryList[] = $d;
@@ -153,10 +163,10 @@ class Checking {
             $fileList .= "<tr>\n";
             $fileList .= "<td width='10%'>{$k}</td>\n";
             $fileList .= "<td width='18%'>{$fileCount}</td>\n";
-            $fileList .= "<td width='18%'>".number_format(round($fileSumSize, 2),0,",",".")." byte</td>\n";
-            $fileList .= "<td width='18%'>".number_format(round($avgSize, 2),0,",",".")." byte</td>\n";
-            $fileList .= "<td width='18%'>".number_format(round($min, 2),0,",",".")." byte</td>\n";
-            $fileList .= "<td width='18%'>".number_format(round($max, 2),0,",",".")." byte</td>\n";
+            $fileList .= "<td width='18%'>".$this->misc->formatSizeUnits($fileSumSize)."</td>\n";
+            $fileList .= "<td width='18%'>".$this->misc->formatSizeUnits($avgSize)."</td>\n";
+            $fileList .= "<td width='18%'>".$this->misc->formatSizeUnits($min)."</td>\n";
+            $fileList .= "<td width='18%'>".$this->misc->formatSizeUnits($max)."</td>\n";
             $fileList .= "</tr>\n";
             $fileList .= "</tbody>\n";
             $fileList .= "</table>\n\n";        
@@ -181,7 +191,7 @@ class Checking {
             return true;
         }else {
             $this->errors['tmpDIR'][] = "tmpDir (".$str.") is not exists or not writable, please check the config.ini";
-            echo "\n!!! ERROR !!! tmpDir (".$str.") is not exists or not writable, please check the config.ini !!! ERROR !!!\n";
+            echo "\n ERROR tmpDir (".$str.") is not exists or not writable, please check the config.ini \n";
             return false;
         }        
     }
@@ -200,7 +210,7 @@ class Checking {
             return true;
         }else {
             $this->errors['reportDIR'][] = "reportDIR (".$str.") is not exists or not writable, please check the config.ini";
-            echo "\n!!! ERROR !!! reportDIR (".$str.") is not exists or not writable, please check the config.ini !!! ERROR !!!\n";
+            echo "\nERROR reportDIR (".$str.") is not exists or not writable, please check the config.ini \n";
             return false;
         }        
     }
@@ -294,7 +304,7 @@ class Checking {
         }
         
         if(isset($this->errors['VF']) && (count($this->errors['VF']) > 0)){
-            echo "\n!!! ERROR !!! During the Virus and File checking, please check the report !!! ERROR !!!\n";
+            echo "\nERROR During the Virus and File checking, please check the report\n";
         }
         
         echo "\n######## - Virus and File Extension checking Ended - ########\n";
@@ -321,9 +331,11 @@ class Checking {
             
             $progressBar = new \ProgressBar\Manager(0, count($this->dirList));
             echo "\nChecking Filenames, extensions\n";
+            $mimeTypes = array_change_key_case($mimeTypes,CASE_LOWER);
             
             foreach($this->dirList as $file){
                 $duplicates[] = $file['filename'];
+                $duplicatesData[$file['filename']][] = $file['name'];
                 $progressBar->advance();
                 
                 if(isset($file['extension'])){
@@ -332,7 +344,7 @@ class Checking {
                         $this->errors['MIME'][$file['filename']]['type'] = $file['type'];
                         $this->errors['MIME'][$file['filename']]['extension'] = $file['extension'];                        
                         //checking the array extensions list too
-                    }else if(is_array($mimeTypes[$file['extension']]) 
+                    }else if(is_array($mimeTypes[$file['extension']])
                             && !in_array($file['type'], $mimeTypes[$file['extension']]) && $file['type'] != "dir"){
                         $this->errors['MIME'][$file['filename']]['filename'] = $file['filename'];
                         $this->errors['MIME'][$file['filename']]['type'] = $file['type'];
@@ -384,7 +396,7 @@ class Checking {
                 foreach($duplicateFiles as $k => $v){
                     if($v > 1){
                         sleep(1);
-                        $this->errors['DUPLICATES'][] = $k;
+                        $this->errors['DUPLICATES'][] = $duplicatesData[$k];
                     }
                 }                
             }
@@ -397,7 +409,7 @@ class Checking {
                 
                 if(!empty($zips)){
                     $this->errors['ZipFileError'] = $zips;
-                    echo "\n!!! ERROR !!! ZIP FILES WITH PASSWORD, please check the report !!! ERROR !!!\n";
+                    echo "\nERROR ZIP FILES WITH PASSWORD, please check the report \n";
                 }
             }
             
@@ -414,8 +426,8 @@ class Checking {
                 sleep(1);
 
                 if($this->generateFileListHtml() === false){
-                    $this->errors['GENFILE'][] = "\nERROR!!!! During the generateFileListHtml function \n\n";
-                    echo "\n!!! ERROR !!! During the file list generating, please check the report !!! ERROR !!!\n";                    
+                    $this->errors['GENFILE'][] = "\nERROR During the generateFileListHtml function \n\n";
+                    echo "\nERROR During the file list generating, please check the report \n";                    
                     
                 }else {
                     echo "\n File list HTML report is ready! \n\n";
@@ -424,7 +436,7 @@ class Checking {
             }            
 
         }else {
-            echo "\nERROR!!!! During the getFileList function \n\n";		
+            echo "\nERROR During the getFileList function \n\n";		
             echo "\n######## - FileNames checking Ended - ########\n";
             sleep(1);
             return false;
@@ -448,7 +460,7 @@ class Checking {
     private function generateFileListHtml(): string {
         
         if(empty($this->dirList)){
-            echo "ERROR!!!! generateFileListHtml function has no data \n\n".$f;
+            echo "ERROR generateFileListHtml function has no data \n\n".$f;
             sleep(1);
             return false;
         }
@@ -495,7 +507,7 @@ class Checking {
             $fileList .= "<td>{$f['directory']}</td>\n";
             $fileList .= "<td>{$f['filename']}</td>\n";
             $fileList .= "<td>{$f['type']}</td>\n";
-            $fileList .= "<td>".number_format(round($f['size'], 2),0,",",".")." byte</td>\n";
+            $fileList .= "<td>".$this->misc->formatSizeUnits($f['size'])."</td>\n";
             $fileList .= "<td>".date('r', $f['lastmod'])."</td>\n";
             $fileList .= "</tr>\n";
         }   
@@ -523,7 +535,7 @@ class Checking {
             $fileList .= "<td>{$d['directory']}</td>\n";
             $fileList .= "<td>{$d['filename']}</td>\n";
             $fileList .= "<td>{$d['dirDepth']}</td>\n";
-            $fileList .= "<td>".number_format(round($dirFS, 2),0,",",".")." byte</td>\n";
+            $fileList .= "<td>".$this->misc->formatSizeUnits($dirFS)."</td>\n";
             $fileList .= "<td>{$lm}</td>\n";
             $fileList .= "</tr>\n";
         }   
@@ -537,13 +549,12 @@ class Checking {
         return $fileList;
     }
     
-    
-    
+   
     
     private function generateErrorReport(): string{
         
         if(empty($this->dirList)){
-            echo "ERROR!!!! generateErrorReport function has no data \n\n".$f;
+            echo "ERROR generateErrorReport function has no data \n\n".$f;
             sleep(1);
             return false;
         }
@@ -567,7 +578,16 @@ class Checking {
                 foreach($this->errors['VF'] as $f){
                     $errorList .= "<tr>\n";
                     $errorList .= "<td>ERROR during the Virus and File Extension checking </td>\n";
-                    $errorList .= "<td>{$f}</td>\n";
+                    
+                    if (strpos($f, 'blacklist') !== false) {
+                        $errorList .= "<td style='color:white; background-color:#FFB74D'>";
+                    } elseif(strpos($f, 'chameleon') !== false){
+                        $errorList .= "<td style='color:white; background-color:#2c3e50'>";
+                    } else {
+                        $errorList .= "<td>";
+                    }
+                    
+                    $errorList .= "{$f}</td>\n";
                     $errorList .= "</tr>\n";
                 }
             }
@@ -610,10 +630,16 @@ class Checking {
             }
             
             if(!empty($this->errors['DUPLICATES']) && count($this->errors['DUPLICATES']) > 0){
-                foreach($this->errors['DUPLICATES'] as $f){
+                foreach($this->errors['DUPLICATES'] as $v){
                     $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR!!! File Duplication:</td>\n";
-                    $errorList .= "<td>{$f}</td>\n";
+                    $errorList .= "<td>ERROR File Duplication:</td>\n";
+                    $errorList .= "<td>";
+                    $errorList .= "<ul>";
+                    foreach($v as $val){
+                        $errorList .= "<li>".$val."</li>";
+                    } 
+                    $errorList .= "</ul>";
+                    $errorList .= "</td>";
                     $errorList .= "</tr>\n";
                 }
             }
@@ -621,7 +647,7 @@ class Checking {
             if(!empty($this->errors['WRONGFILES']) && count($this->errors['WRONGFILES']) > 0){
                 foreach($this->errors['WRONGFILES'] as $f){
                     $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR!!!! Not valid file name(s):</td>\n";
+                    $errorList .= "<td>ERROR Not valid file name(s):</td>\n";
                     $errorList .= "<td>{$f}</td>\n";
                     $errorList .= "</tr>\n";
                 }
@@ -630,7 +656,7 @@ class Checking {
             if(!empty($this->errors['xlsxPW']) && count($this->errors['xlsxPW']) > 0){
                 foreach($this->errors['xlsxPW'] as $f){
                     $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR!!!! Password proected XLSX/DOCX file(s):</td>\n";
+                    $errorList .= "<td>ERROR Password proected XLSX/DOCX file(s):</td>\n";
                     $errorList .= "<td>{$f}</td>\n";
                     $errorList .= "</tr>\n";
                 }
@@ -639,7 +665,7 @@ class Checking {
             if(!empty($this->errors['PDFError']) && count($this->errors['PDFError']) > 0){
                 foreach($this->errors['PDFError'] as $f){
                     $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR!!!! Password proected PDF file(s):</td>\n";
+                    $errorList .= "<td>ERROR Password proected PDF file(s):</td>\n";
                     $errorList .= "<td>{$f}</td>\n";
                     $errorList .= "</tr>\n";
                 }
@@ -649,7 +675,7 @@ class Checking {
                 
                 foreach($this->errors['bagITError'] as $k => $v){                    
                     $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR!!!! BagIT file validation Error: </td>\n";
+                    $errorList .= "<td>ERROR BagIT file validation Error: </td>\n";
                     $errorList .= "<td>BagIT filename: {$k} <br><br>";
                     $errorList .= "Errors: <br>";
                         foreach($v as $val){
@@ -685,7 +711,6 @@ class Checking {
      */
     private function getFileList(string $dir, bool $recurse=false, bool $depth=false): array
     {
-
         if(function_exists('mime_content_type')){
           $finfo = false;
         } else {
@@ -759,7 +784,7 @@ class Checking {
                     "lastmod" => filemtime("$dir$entry"),
                     "valid_file" => $valid,
                     "filename" => $entry,
-                    "extension" => $extension                    
+                    "extension" => strtolower($extension)
                 );
             }
             
@@ -773,189 +798,7 @@ class Checking {
     }
     
     
-    private function getMIME(): array{
-        return array(
-            'hqx'	=>	array('application/mac-binhex40', 'application/mac-binhex', 'application/x-binhex40', 'application/x-mac-binhex40'),
-            'cpt'	=>	'application/mac-compactpro',
-            'csv'	=>	array('text/x-comma-separated-values', 'text/comma-separated-values', 'application/octet-stream', 'application/vnd.ms-excel', 'application/x-csv', 'text/x-csv', 'text/csv', 'application/csv', 'application/excel', 'application/vnd.msexcel', 'text/plain'),
-            'bin'	=>	array('application/macbinary', 'application/mac-binary', 'application/octet-stream', 'application/x-binary', 'application/x-macbinary'),
-            'dms'	=>	'application/octet-stream',
-            'lha'	=>	'application/octet-stream',
-            'lzh'	=>	'application/octet-stream',
-            'exe'	=>	array('application/octet-stream', 'application/x-msdownload'),
-            'class'	=>	'application/octet-stream',
-            'psd'	=>	array('application/x-photoshop', 'image/vnd.adobe.photoshop'),
-            'so'	=>	'application/octet-stream',
-            'sea'	=>	'application/octet-stream',
-            'dll'	=>	'application/octet-stream',
-            'oda'	=>	'application/oda',
-            'pdf'	=>	array('application/pdf', 'application/force-download', 'application/x-download', 'binary/octet-stream'),
-            'ai'	=>	array('application/pdf', 'application/postscript'),
-            'eps'	=>	'application/postscript',
-            'ps'	=>	'application/postscript',
-            'smi'	=>	'application/smil',
-            'smil'	=>	'application/smil',
-            'mif'	=>	'application/vnd.mif',
-            'xls'	=>	array('application/vnd.ms-excel', 'application/msexcel', 'application/x-msexcel', 'application/x-ms-excel', 'application/x-excel', 'application/x-dos_ms_excel', 'application/xls', 'application/x-xls', 'application/excel', 'application/download', 'application/vnd.ms-office', 'application/msword'),
-            'ppt'	=>	array('application/powerpoint', 'application/vnd.ms-powerpoint', 'application/vnd.ms-office', 'application/msword'),
-            'pptx'	=> 	array('application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/x-zip', 'application/zip'),
-            'wbxml'	=>	'application/wbxml',
-            'wmlc'	=>	'application/wmlc',
-            'dcr'	=>	'application/x-director',
-            'dir'	=>	'application/x-director',
-            'dxr'	=>	'application/x-director',
-            'dvi'	=>	'application/x-dvi',
-            'gtar'	=>	'application/x-gtar',
-            'gz'	=>	'application/x-gzip',
-            'gzip'      =>	'application/x-gzip',
-            'php'	=>	array('application/x-httpd-php', 'application/php', 'application/x-php', 'text/php', 'text/x-php', 'application/x-httpd-php-source'),
-            'php4'	=>	'application/x-httpd-php',
-            'php3'	=>	'application/x-httpd-php',
-            'phtml'	=>	'application/x-httpd-php',
-            'phps'	=>	'application/x-httpd-php-source',
-            'js'	=>	array('application/x-javascript', 'text/plain'),
-            'swf'	=>	'application/x-shockwave-flash',
-            'sit'	=>	'application/x-stuffit',
-            'tar'	=>	'application/x-tar',
-            'tgz'	=>	array('application/x-tar', 'application/x-gzip-compressed', 'application/x-gzip'),
-            'z'	=>	'application/x-compress',
-            'xhtml'	=>	'application/xhtml+xml',
-            'xht'	=>	'application/xhtml+xml',
-            'zip'	=>	array('application/x-zip', 'application/zip', 'application/x-zip-compressed', 'application/s-compressed', 'multipart/x-zip'),
-            'rar'	=>	array('application/x-rar', 'application/rar', 'application/x-rar-compressed'),
-            'mid'	=>	'audio/midi',
-            'midi'	=>	'audio/midi',
-            'mpga'	=>	'audio/mpeg',
-            'mp2'	=>	'audio/mpeg',
-            'mp3'	=>	array('audio/mpeg', 'audio/mpg', 'audio/mpeg3', 'audio/mp3'),
-            'aif'	=>	array('audio/x-aiff', 'audio/aiff'),
-            'aiff'	=>	array('audio/x-aiff', 'audio/aiff'),
-            'aifc'	=>	'audio/x-aiff',
-            'ram'	=>	'audio/x-pn-realaudio',
-            'rm'	=>	'audio/x-pn-realaudio',
-            'rpm'	=>	'audio/x-pn-realaudio-plugin',
-            'ra'	=>	'audio/x-realaudio',
-            'rv'	=>	'video/vnd.rn-realvideo',
-            'wav'	=>	array('audio/x-wav', 'audio/wave', 'audio/wav'),
-            'bmp'	=>	array('image/bmp', 'image/x-bmp', 'image/x-bitmap', 'image/x-xbitmap', 'image/x-win-bitmap', 'image/x-windows-bmp', 'image/ms-bmp', 'image/x-ms-bmp', 'application/bmp', 'application/x-bmp', 'application/x-win-bitmap'),
-            'gif'	=>	'image/gif',
-            'jpeg'	=>	array('image/jpeg', 'image/pjpeg'),
-            'jpg'	=>	array('image/jpeg', 'image/pjpeg'),
-            'jpe'	=>	array('image/jpeg', 'image/pjpeg'),
-            'jp2'	=>	array('image/jp2', 'video/mj2', 'image/jpx', 'image/jpm'),
-            'j2k'	=>	array('image/jp2', 'video/mj2', 'image/jpx', 'image/jpm'),
-            'jpf'	=>	array('image/jp2', 'video/mj2', 'image/jpx', 'image/jpm'),
-            'jpg2'	=>	array('image/jp2', 'video/mj2', 'image/jpx', 'image/jpm'),
-            'jpx'	=>	array('image/jp2', 'video/mj2', 'image/jpx', 'image/jpm'),
-            'jpm'	=>	array('image/jp2', 'video/mj2', 'image/jpx', 'image/jpm'),
-            'mj2'	=>	array('image/jp2', 'video/mj2', 'image/jpx', 'image/jpm'),
-            'mjp2'	=>	array('image/jp2', 'video/mj2', 'image/jpx', 'image/jpm'),
-            'png'	=>	array('image/png',  'image/x-png'),
-            'tiff'	=>	'image/tiff',
-            'tif'	=>	'image/tiff',
-            'css'	=>	array('text/css', 'text/plain'),
-            'html'	=>	array('text/html', 'text/plain'),
-            'htm'	=>	array('text/html', 'text/plain'),
-            'shtml'	=>	array('text/html', 'text/plain'),
-            'txt'	=>	'text/plain',
-            'text'	=>	'text/plain',
-            'log'	=>	array('text/plain', 'text/x-log'),
-            'rtx'	=>	'text/richtext',
-            'rtf'	=>	array('application/rtf', 'text/rtf'),
-            'xml'	=>	array('application/xml', 'text/xml', 'text/plain'),
-            'xsl'	=>	array('application/xml', 'text/xsl', 'text/xml'),
-            'mpeg'	=>	'video/mpeg',
-            'mpg'	=>	'video/mpeg',
-            'mpe'	=>	'video/mpeg',
-            'qt'	=>	'video/quicktime',
-            'mov'	=>	'video/quicktime',
-            'avi'	=>	array('video/x-msvideo', 'video/msvideo', 'video/avi', 'application/x-troff-msvideo'),
-            'movie'	=>	'video/x-sgi-movie',
-            'doc'	=>	array('application/msword', 'application/vnd.ms-office'),
-            'docx'	=>	array('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/msword', 'application/x-zip'),
-            'dot'	=>	array('application/msword', 'application/vnd.ms-office'),
-            'dotx'	=>	array('application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip', 'application/msword'),
-            'xlsx'	=>	array('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/zip', 'application/vnd.ms-excel', 'application/msword', 'application/x-zip'),
-            'word'	=>	array('application/msword', 'application/octet-stream'),
-            'xl'	=>	'application/excel',
-            'eml'	=>	'message/rfc822',
-            'json'  =>	array('application/json', 'text/json'),
-            'pem'   =>	array('application/x-x509-user-cert', 'application/x-pem-file', 'application/octet-stream'),
-            'p10'   =>	array('application/x-pkcs10', 'application/pkcs10'),
-            'p12'   =>	'application/x-pkcs12',
-            'p7a'   =>	'application/x-pkcs7-signature',
-            'p7c'   =>	array('application/pkcs7-mime', 'application/x-pkcs7-mime'),
-            'p7m'   =>	array('application/pkcs7-mime', 'application/x-pkcs7-mime'),
-            'p7r'   =>	'application/x-pkcs7-certreqresp',
-            'p7s'   =>	'application/pkcs7-signature',
-            'crt'   =>	array('application/x-x509-ca-cert', 'application/x-x509-user-cert', 'application/pkix-cert'),
-            'crl'   =>	array('application/pkix-crl', 'application/pkcs-crl'),
-            'der'   =>	'application/x-x509-ca-cert',
-            'kdb'   =>	'application/octet-stream',
-            'pgp'   =>	'application/pgp',
-            'gpg'   =>	'application/gpg-keys',
-            'sst'   =>	'application/octet-stream',
-            'csr'   =>	'application/octet-stream',
-            'rsa'   =>	'application/x-pkcs7',
-            'cer'   =>	array('application/pkix-cert', 'application/x-x509-ca-cert'),
-            '3g2'   =>	'video/3gpp2',
-            '3gp'   =>	array('video/3gp', 'video/3gpp'),
-            'mp4'   =>	'video/mp4',
-            'm4a'   =>	'audio/x-m4a',
-            'f4v'   =>	array('video/mp4', 'video/x-f4v'),
-            'flv'	=>	'video/x-flv',
-            'webm'	=>	'video/webm',
-            'aac'   =>	'audio/x-acc',
-            'm4u'   =>	'application/vnd.mpegurl',
-            'm3u'   =>	'text/plain',
-            'xspf'  =>	'application/xspf+xml',
-            'vlc'   =>	'application/videolan',
-            'wmv'   =>	array('video/x-ms-wmv', 'video/x-ms-asf'),
-            'au'    =>	'audio/x-au',
-            'ac3'   =>	'audio/ac3',
-            'flac'  =>	'audio/x-flac',
-            'ogg'   =>	array('audio/ogg', 'video/ogg', 'application/ogg'),
-            'kmz'	=>	array('application/vnd.google-earth.kmz', 'application/zip', 'application/x-zip'),
-            'kml'	=>	array('application/vnd.google-earth.kml+xml', 'application/xml', 'text/xml'),
-            'ics'	=>	'text/calendar',
-            'ical'	=>	'text/calendar',
-            'zsh'	=>	'text/x-scriptzsh',
-            '7zip'	=>	array('application/x-compressed', 'application/x-zip-compressed', 'application/zip', 'multipart/x-zip', 'application/x-7z-compressed', 'application/x-7zip-compressed'),
-            '7z'	=>	array('application/x-compressed', 'application/x-zip-compressed', 'application/zip', 'multipart/x-zip', 'application/x-7z-compressed', 'application/x-7zip-compressed'),
-            'cdr'	=>	array('application/cdr', 'application/coreldraw', 'application/x-cdr', 'application/x-coreldraw', 'image/cdr', 'image/x-cdr', 'zz-application/zz-winassoc-cdr'),
-            'wma'	=>	array('audio/x-ms-wma', 'video/x-ms-asf'),
-            'jar'	=>	array('application/java-archive', 'application/x-java-application', 'application/x-jar', 'application/x-compressed'),
-            'svg'	=>	array('image/svg+xml', 'application/xml', 'text/xml'),
-            'vcf'	=>	'text/x-vcard',
-            'srt'	=>	array('text/srt', 'text/plain'),
-            'vtt'	=>	array('text/vtt', 'text/plain'),
-            'ico'	=>	array('image/x-icon', 'image/x-ico', 'image/vnd.microsoft.icon'),
-            'odc'	=>	'application/vnd.oasis.opendocument.chart',
-            'otc'	=>	'application/vnd.oasis.opendocument.chart-template',
-            'odf'	=>	'application/vnd.oasis.opendocument.formula',
-            'otf'	=>	'application/vnd.oasis.opendocument.formula-template',
-            'odg'	=>	'application/vnd.oasis.opendocument.graphics',
-            'otg'	=>	'application/vnd.oasis.opendocument.graphics-template',
-            'odi'	=>	'application/vnd.oasis.opendocument.image',
-            'oti'	=>	'application/vnd.oasis.opendocument.image-template',
-            'odp'	=>	'application/vnd.oasis.opendocument.presentation',
-            'otp'	=>	'application/vnd.oasis.opendocument.presentation-template',
-            'ods'	=>	'application/vnd.oasis.opendocument.spreadsheet',
-            'ots'	=>	'application/vnd.oasis.opendocument.spreadsheet-template',
-            'odt'	=>	'application/vnd.oasis.opendocument.text',
-            'odm'	=>	'application/vnd.oasis.opendocument.text-master',
-            'ott'	=>	'application/vnd.oasis.opendocument.text-template',
-            'oth'	=>	'application/vnd.oasis.opendocument.text-web',
-            'ole'	=>	array('application/zip', 'application/ole'),
-            'xz'	=>	array('application/x-xz'),
-            'wim'	=>	array('application/octet-stream'),
-            'bz2'	=>	array('application/x-bzip2'),
-            'owl'       =>      array('application/xml'),
-            'xsl'       =>      array('text/html'),
-            'xsd'       =>      array('application/xml'),
-        );
-        
-    }
+    
     
    
     
