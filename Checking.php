@@ -134,7 +134,7 @@ class Checking {
         }
         
         //sort alphabetically the extension array elements
-        $extensionList = ksort($extensionList);
+        ksort($extensionList, SORT_STRING);
         
         $fileList = '<div class="card" id="fileTypeList">
                         <div class="header">
