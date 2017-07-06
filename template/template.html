@@ -6,7 +6,17 @@
 	<link rel="stylesheet" href="style.css">
 	<title>ÖAW - REPO FILE CHECKER REPORT</title>
 	<meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport' />
-    <meta name="viewport" content="width=device-width" />    
+    <meta name="viewport" content="width=device-width" />
+	<link rel="stylesheet" type="text/css" href="jquery.dataTables.css">	
+	<script type="text/javascript" language="javascript" src="jquery.js"></script>
+	<script type="text/javascript" language="javascript" src="jquery.dataTables.js"></script>	
+	<script type="text/javascript" language="javascript" class="init">
+		$(document).ready(function() {
+			$('#filesDT').DataTable();
+                        $('#dirsDT').DataTable();
+                        $('#errorsDT').DataTable();                        
+		} );
+	</script>
 </head>
 <body>
 

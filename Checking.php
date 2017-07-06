@@ -45,7 +45,7 @@ class Checking {
      * @param string $dir
      * @return type
      */
-    public function startChecking(string $dir){
+    public function startChecking(string $dir, int $option){
              
         
         $mimeTypes = $this->misc->getMIME();
@@ -57,13 +57,19 @@ class Checking {
             return;
         }
         
-        $this->checkVirusAndFileExtension($dir);
+        if($option == 1){
+            $this->checkVirusAndFileExtension($dir);
+        }
+        
         $this->checkFiles($mimeTypes);
         
         //create the file list html
         $fn = date('Y_m_d_H_i_s');
         mkdir($this->reportDir.'/'.$fn);
         copy('template/style.css', $this->reportDir.'/'.$fn.'/style.css');
+        copy('template/jquery.js', $this->reportDir.'/'.$fn.'/jquery.js');
+        copy('template/jquery.dataTables.css', $this->reportDir.'/'.$fn.'/jquery.dataTables.css');
+        copy('template/jquery.dataTables.js', $this->reportDir.'/'.$fn.'/jquery.dataTables.js');
         
         $template=file_get_contents('template/template.html');
         
@@ -117,8 +123,7 @@ class Checking {
      */
     private function generateFileTypeList(): string {
         if(empty($this->dirList)){
-            echo "ERROR genereateFileTypeList function has no data \n\n".$f;
-            sleep(1);
+            echo "ERROR genereateFileTypeList function has no data \n\n".$f;            
             return false;
         }
                 
@@ -265,21 +270,32 @@ class Checking {
      */
     private function checkPdfFiles(array $pdfFiles): array{
                 
-        $pdf = new \FPDI();
-        $filename = "";
-        $return = array();
+        $return = array();        
+        $parser = new \Smalot\PdfParser\Parser();
 
-        foreach($pdfFiles as $file){            
+        $pbPDF = new \ProgressBar\Manager(0, count($pdfFiles));
+        
+        foreach($pdfFiles as $file){
+            $pbPDF->advance();
             try {
-                $filename = $file;
-		$pdf->setSourceFile($file);
+                if(strpos(fgets(fopen($file, 'r')), "%PDF-1.4") !== false){
+                    throw new \Exception("We are not supported the PDF 1.4 version");
+                }else {
+                    $parser->parseFile($file); 
+                }
+                
             }catch(\Exception $e) {
-		$return[] = $filename;
+                
+                if (strpos($e->getMessage(), 'Secured pdf file are currently not supported') !== false) {
+                    $errMsg = "Password protected PDF file";
+                }else {
+                    $errMsg = $e->getMessage();
+                }
+                $return[] = $file." <br><b>Error:</b> ".$errMsg;
             }
         }
         
-        return $return;
-        
+        return $return;        
     }
    
     /**
@@ -310,8 +326,7 @@ class Checking {
             echo "\nERROR During the Virus and File checking, please check the report\n";
         }
         
-        echo "\n######## - Virus and File Extension checking Ended - ########\n";
-        sleep(1);
+        echo "\n######## - Virus and File Extension checking Ended - ########\n";        
         return true;
     }
 
@@ -324,7 +339,6 @@ class Checking {
     private function checkFiles(array $mimeTypes): bool{
 
         echo "\n######## - Files checking Starting - ########\n";
-        sleep(1);
         
         $zipFiles = array();
         $pdfFiles = array();
@@ -337,8 +351,11 @@ class Checking {
             $mimeTypes = array_change_key_case($mimeTypes,CASE_LOWER);
             
             foreach($this->dirList as $file){
-                $duplicates[] = $file['filename'];
-                $duplicatesData[$file['filename']][] = $file['name'];
+                //$duplicates[] = $file['filename'];
+                if($file['type'] != "dir"){
+                    $duplicatesData[$file['filename']][] = $file['name'];
+                }
+                
                 $progressBar->advance();
                 
                 if(isset($file['extension'])){
@@ -390,23 +407,27 @@ class Checking {
                     }
                 }                    
             }
-
-            $duplicateFiles = array_count_values($duplicates);
             
-            if(count($duplicateFiles) > 0){               
-                echo "\nChecking the duplicated file(s)....\n";
-                sleep(1);
-                foreach($duplicateFiles as $k => $v){
-                    if($v > 1){
-                        sleep(1);
-                        $this->errors['DUPLICATES'][] = $duplicatesData[$k];
-                    }
-                }                
+            
+            
+            echo "\nChecking the duplicated file(s)....\n";            
+            $duplicateARR=array();
+            foreach($duplicatesData as $k => $v){
+                if(is_array($v) && count($v) > 1){
+                    $duplicateARR[$k] = $v;
+                }
             }
-
+            
+            $pbDuplicates = new \ProgressBar\Manager(0, count($duplicateARR));
+            
+            foreach($duplicateARR as $k => $v){
+                $pbDuplicates->advance();
+                $this->errors['DUPLICATES'][$k] = $v;
+            }
+            
+            
             if(count($zipFiles) > 0){
-                echo "\nChecking the zip file(s)....\n";
-                sleep(1);
+                echo "\nChecking the zip file(s)....\n";                
                 $zips = array();
                 $zips = $this->checkZipFiles($zipFiles);
                 
@@ -417,6 +438,7 @@ class Checking {
             }
             
             if(count($pdfFiles) > 0){
+                echo "\nChecking PDF file(s).... \n";                
                 $pdfResult = $this->checkPdfFiles($pdfFiles);
                 if(count($pdfResult) > 0){
                     $this->errors['PDFError'] = $pdfResult;
@@ -426,27 +448,23 @@ class Checking {
             if(empty($this->errors)){
                 echo "\n Everything is okay! \n";
                 echo "\nFile List ok! Generating HTML with the File list\n";
-                sleep(1);
-
+                
                 if($this->generateFileListHtml() === false){
                     $this->errors['GENFILE'][] = "\nERROR During the generateFileListHtml function \n\n";
                     echo "\nERROR During the file list generating, please check the report \n";                    
                     
                 }else {
-                    echo "\n File list HTML report is ready! \n\n";
-                    sleep(1);
+                    echo "\n File list HTML report is ready! \n\n";                
                 }
             }            
 
         }else {
             echo "\nERROR During the getFileList function \n\n";		
-            echo "\n######## - FileNames checking Ended - ########\n";
-            sleep(1);
+            echo "\n######## - FileNames checking Ended - ########\n";            
             return false;
         }
 
-        echo "\n######## - FileNames checking Ended - ########\n";
-        sleep(1);
+        echo "\n######## - FileNames checking Ended - ########\n";        
         return true;
     }
 
@@ -463,8 +481,7 @@ class Checking {
     private function generateFileListHtml(): string {
         
         if(empty($this->dirList)){
-            echo "ERROR generateFileListHtml function has no data \n\n".$f;
-            sleep(1);
+            echo "ERROR generateFileListHtml function has no data \n\n".$f;            
             return false;
         }
         $dirArr = array();
@@ -494,7 +511,7 @@ class Checking {
                             <h4 class="title">File List</h4>
                         </div>
                     <div class="content table-responsive table-full-width" >';
-        $fileList .= "<table class=\"table table-hover table-striped\">"
+        $fileList .= "<table class=\"table table-hover table-striped\" id=\"filesDT\" >"
                 . "<h2>Files</h2>\n";
         $fileList .= "<thead>\n";
         $fileList .= "<tr><th><b>Directory</b></th><th><b>Filename</b></th><th><b>Type</b></th><th><b>Size</b></th><th><b>Last Modified</b></th></tr>\n";
@@ -517,7 +534,7 @@ class Checking {
         $fileList .= "</tbody>\n";
         $fileList .= "</table>\n\n";
         
-        $fileList .= "<table class=\"table table-hover table-striped\">"
+        $fileList .= "<table class=\"table table-hover table-striped\" id=\"dirsDT\">"
                 . "<h2>Directories</h2>\n";
         $fileList .= "<thead>\n";
         $fileList .= "<tr><th><b>Directory</b></th><th><b>SubDir</b></th><th><b>Directory Depth</b></th><th><b>Dir. Sum File Size</b></th><th><b>Last Modified</b></th></tr>\n";
@@ -557,13 +574,11 @@ class Checking {
     private function generateErrorReport(): string{
         
         if(empty($this->dirList)){
-            echo "ERROR generateErrorReport function has no data \n\n".$f;
-            sleep(1);
+            echo "ERROR generateErrorReport function has no data \n\n".$f;            
             return false;
         }
         
         $errorList = "";
-        
         
         if($this->errors){
             $errorList = '<div class="card" id="errors">
@@ -571,7 +586,7 @@ class Checking {
                             <h4 class="title">Errors</h4>                            
                         </div>
                     <div class="content table-responsive table-full-width" >';
-            $errorList .= "<table class=\"table table-hover table-striped\">\n";
+            $errorList .= "<table class=\"table table-hover table-striped\" id=\"errorsDT\">\n";
             $errorList .= "<thead>\n";
             $errorList .= "<tr><th><b>Error description</b></th><th><b>Filename/Error information</b></th></tr>\n";
             $errorList .= "</thead>\n";
@@ -668,7 +683,7 @@ class Checking {
             if(!empty($this->errors['PDFError']) && count($this->errors['PDFError']) > 0){
                 foreach($this->errors['PDFError'] as $f){
                     $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR Password proected PDF file(s):</td>\n";
+                    $errorList .= "<td>ERROR in the PDF file(s):</td>\n";
                     $errorList .= "<td>{$f}</td>\n";
                     $errorList .= "</tr>\n";
                 }
@@ -770,7 +785,7 @@ class Checking {
             } elseif(is_readable("$dir$entry")) {
                 $valid = true;
                 //check the file name
-                if(preg_match('/[^A-Za-z0-9\_\-\.]/', $entry)){ $valid = false; }
+                if(preg_match('/[^A-Za-z0-9\_\(\)\-\.]/', $entry)){ $valid = false; }
 
                 $extension = explode('.', $entry);
                 $extension = end($extension);
