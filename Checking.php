@@ -19,6 +19,9 @@ class Checking {
     private $dir;
     private $bagitFiles = array();
     private $misc;
+    private $dirArr = array();
+    private $fileArr = array();
+    
     
     public function __construct(){
                 
@@ -57,9 +60,27 @@ class Checking {
             return;
         }
         
-        if($option == 1){
-            $this->checkVirusAndFileExtension($dir);
+        //create file and dir array for the lists
+        foreach($this->dirList as $file) {            
+            if($file['type'] == "dir"){                
+                //get the folder depth
+                $dirDepth = array();
+                $dir = str_replace($this->dir."/", "", $file["name"]);
+                if(!empty($dir)){
+                    $dirDepth = explode("/", $dir);
+                    $file["dirDepth"] = count(array_filter($dirDepth));
+                }
+                $this->dirArr[] = $file;                
+            }else {
+                $this->fileArr[] = $file;
+            }
         }
+        $this->dirArr[] = array("directory" => $this->dir."/", "name" => $this->dir."/", "filename" => "root_dir");
+        
+        if($option == 1){
+            $this->checkVirus($this->fileArr);
+        }
+        
         
         $this->checkFiles($mimeTypes);
         
@@ -73,7 +94,7 @@ class Checking {
         
         $template=file_get_contents('template/template.html');
         
-        if(!empty($fList = $this->generateFileListHtml())){
+        if(!empty($fList = $this->generateFileListHtml($this->dirArr, $this->fileArr))){
             $tpl=str_replace("{html_file_content}", $fList,$template);
         }else {
             $tpl=str_replace("{html_file_content}", "File list is empty",$template);
@@ -277,11 +298,13 @@ class Checking {
         
         foreach($pdfFiles as $file){
             $pbPDF->advance();
+            
             try {
-                if(strpos(fgets(fopen($file, 'r')), "%PDF-1.4") !== false){
-                    throw new \Exception("We are not supported the PDF 1.4 version");
+                if((strpos(fgets(fopen($file, 'r')), "%PDF-1.4") !== false) || (strpos(fgets(fopen($file, 'r')), "%PDF") !== false)){
+                    $errMsg = "We are not supported the PDF 1.4 version";
+                    continue;
                 }else {
-                    $parser->parseFile($file); 
+                    $parser->parseFile($file);
                 }
                 
             }catch(\Exception $e) {
@@ -307,26 +330,89 @@ class Checking {
      * @param string $str
      * @return bool
      */
-    private function checkVirusAndFileExtension(string $str): bool{
+    private function checkVirus(array $data): bool{
 
-        echo "\n######## - Virus and File Extension checking Starting - ########\n";
-        //check the viruses
-        include 'phpMussel\loader.php';
+        echo "\n######## - Virus check Starting - ########\n";
         
-        $virusRes = $phpMussel['Scan']($str, true, false);
+        /*
+        foreach($data as $d){
+            echo $d["name"];
+            echo "\n";
+            $pbVirus->advance();
+            $safe_path = escapeshellarg($d['name']);
+            
+            $command = "clamscan -r " . $safe_path ." | awk -F: '$2 ~ /OK/ {ok++} $2 ~ /FOUND/ {inf++} {printf \"Files scanned OK: %d Files infected: %d\r\", ok, inf}'";
+            $out = '';
+            $int = -1;        
+            exec($command, $out, $int);
+            
+            
+        }*/
+        /*
+        $safe_path = escapeshellarg($this->dir);
+        
+        $command = "clamscan -r " . $safe_path ." | awk -F: '$2 ~ /OK/ {ok++} $2 ~ /FOUND/ {inf++} {printf \"Files scanned OK: %d Files infected: %d\r\", ok, inf}'";
+            
+        $out = '';
+        $int = -1;        
+        $exec = exec($command, $out, $int);
+        */
+        
+        
+        $count = count($this->fileArr);        
+        $pbVirus = new \ProgressBar\Manager(0, $count);
+        
+        $safe_path = escapeshellarg($this->dir);
+        $cmd = "clamscan -r --bell " . $safe_path;
 
-        //get the problematic files
-        foreach($virusRes as $res){            
-            if ((strpos($res, 'No problems') === false)) { 
-                $this->errors['VF'][] = $res;                 
-            }
+        $descriptorspec = array(
+            0 => array("pipe", "r"), 
+            1 => array("pipe", "w"), 
+            2 => array("pipe", "a")
+        );
+
+        $pipes = array();
+        
+        $process = proc_open($cmd, $descriptorspec, $pipes, null, null);
+
+        echo "Start process:\n";
+
+        $str = "";
+        $res = "";
+        $i = 0;        
+        if(is_resource($process)) {
+            do {
+                $i++; 
+                $curStr = fgets($pipes[1]);  //will wait for a end of line
+                echo $curStr;
+                echo "\n";
+                $str .= $curStr;
+                $arr = proc_get_status($process);
+                //get the final result
+                if($i > $count){
+                    $res .= $curStr."\n";
+                }
+                
+                if($i <= $count){
+                    $pbVirus->advance();
+                }
+                
+            }while($arr['running']);
+        }else{
+            echo "Unable to start process\n";
+        }
+
+        fclose($pipes[0]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+
+        
+        if(!empty($res)){
+            $this->errors['VF'][] = $res;
         }
         
-        if(isset($this->errors['VF']) && (count($this->errors['VF']) > 0)){
-            echo "\nERROR During the Virus and File checking, please check the report\n";
-        }
-        
-        echo "\n######## - Virus and File Extension checking Ended - ########\n";        
+        echo "\n######## - Virus check Ended - ########\n";        
         return true;
     }
 
@@ -478,31 +564,13 @@ class Checking {
      * @param array $data
      * @return boolean
      */
-    private function generateFileListHtml(): string {
+    private function generateFileListHtml(array $dirArr, array $fileArr): string {
         
         if(empty($this->dirList)){
             echo "ERROR generateFileListHtml function has no data \n\n".$f;            
             return false;
         }
-        $dirArr = array();
-        $fileArr = array();
-        
-        //create file and dir array for the lists
-        foreach($this->dirList as $file) {            
-            if($file['type'] == "dir"){                
-                //get the folder depth
-                $dirDepth = array();
-                $dir = str_replace($this->dir."/", "", $file["name"]);
-                if(!empty($dir)){
-                    $dirDepth = explode("/", $dir);
-                    $file["dirDepth"] = count(array_filter($dirDepth));
-                }
-                $dirArr[] = $file;                
-            }else {
-                $fileArr[] = $file;
-            }
-        }
-        $dirArr[] = array("directory" => $this->dir."/", "name" => $this->dir."/", "filename" => "root_dir");
+       
         
         $dirFileSizes = array();        
         $fileList = "";
@@ -593,21 +661,17 @@ class Checking {
             $errorList .= "<tbody>\n";
             
             if(!empty($this->errors['VF']) && count($this->errors['VF']) > 0){
+                $errorList .= "<tr>\n";
+                $errorList .= "<td>\n";
+                $errorList .= "Virus checking results:\n";
+                $errorList .= "</td>\n";
+                $errorList .= "<td>\n";
                 foreach($this->errors['VF'] as $f){
-                    $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR during the Virus and File Extension checking </td>\n";
-                    
-                    if (strpos($f, 'blacklist') !== false) {
-                        $errorList .= "<td style='color:white; background-color:#FFB74D'>";
-                    } elseif(strpos($f, 'chameleon') !== false){
-                        $errorList .= "<td style='color:white; background-color:#2c3e50'>";
-                    } else {
-                        $errorList .= "<td>";
-                    }
-                    
-                    $errorList .= "{$f}</td>\n";
-                    $errorList .= "</tr>\n";
+                    $errorList .= $f;
                 }
+                
+                $errorList .= "</td>\n";
+                $errorList .= "</tr>\n";                
             }
 
             if(!empty($this->errors['tmpDIR']) && count($this->errors['tmpDIR']) > 0){
