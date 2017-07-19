@@ -49,7 +49,6 @@ class Checking {
      * @return type
      */
     public function startChecking(string $dir, int $option){
-             
         
         $mimeTypes = $this->misc->getMIME();
         $this->dirList = $this->getFileList($dir, true);
@@ -60,9 +59,10 @@ class Checking {
             return;
         }
         
+        
         //create file and dir array for the lists
         foreach($this->dirList as $file) {            
-            if($file['type'] == "dir"){                
+            if($file['type'] == "dir"){
                 //get the folder depth
                 $dirDepth = array();
                 $dir = str_replace($this->dir."/", "", $file["name"]);
@@ -70,8 +70,9 @@ class Checking {
                     $dirDepth = explode("/", $dir);
                     $file["dirDepth"] = count(array_filter($dirDepth));
                 }
-                $this->dirArr[] = $file;                
+                $this->dirArr[] = $file;
             }else {
+                $this->checkBlackList($file);
                 $this->fileArr[] = $file;
             }
         }
@@ -80,7 +81,6 @@ class Checking {
         if($option == 1){
             $this->checkVirus($this->fileArr);
         }
-        
         
         $this->checkFiles($mimeTypes);
         
@@ -110,13 +110,41 @@ class Checking {
         
         if($this->errors){
             $errorList = $this->generateErrorReport();
+            $virusList = $this->generateVirusReport();
+            
             if(!empty($errorList)){
                 $tplE=str_replace("{html_file_content}", $errorList,$template);
             }
+            
+            if(!empty($virusList)){
+                $tplV=str_replace("{html_file_content}", $virusList,$template);
+            }
         }else{
             $tplE=str_replace("{html_file_content}", "Error list is empty",$template);
+            $tplV=str_replace("{html_file_content}", "Virus report is empty",$template);
         }
         file_put_contents($this->reportDir.'/'.$fn.'/errorList.html', $tplE.PHP_EOL , FILE_APPEND | LOCK_EX);
+        file_put_contents($this->reportDir.'/'.$fn.'/virusReport.html', $tplV.PHP_EOL , FILE_APPEND | LOCK_EX);
+        
+        
+    }
+    
+    /**
+     * 
+     * Check the blacklisted elements
+     * 
+     * @param array $file
+     */
+    private function checkBlackList(array $file) {
+        $bl = $this->misc::$blackList;
+        
+        if(isset($file['extension'])){
+            foreach ($bl as $b){
+                if(strtolower($b) == strtolower($file['extension'])){
+                    $this->errors['blackList'][] = $file['name'];
+                }
+            }
+        }
     }
     
     /**
@@ -276,8 +304,7 @@ class Checking {
                     if(is_file($file))
                     unlink($file); // delete file
                 }
-            }
-            
+            }            
         }
         return $pwZips;
     }
@@ -333,31 +360,6 @@ class Checking {
     private function checkVirus(array $data): bool{
 
         echo "\n######## - Virus check Starting - ########\n";
-        
-        /*
-        foreach($data as $d){
-            echo $d["name"];
-            echo "\n";
-            $pbVirus->advance();
-            $safe_path = escapeshellarg($d['name']);
-            
-            $command = "clamscan -r " . $safe_path ." | awk -F: '$2 ~ /OK/ {ok++} $2 ~ /FOUND/ {inf++} {printf \"Files scanned OK: %d Files infected: %d\r\", ok, inf}'";
-            $out = '';
-            $int = -1;        
-            exec($command, $out, $int);
-            
-            
-        }*/
-        /*
-        $safe_path = escapeshellarg($this->dir);
-        
-        $command = "clamscan -r " . $safe_path ." | awk -F: '$2 ~ /OK/ {ok++} $2 ~ /FOUND/ {inf++} {printf \"Files scanned OK: %d Files infected: %d\r\", ok, inf}'";
-            
-        $out = '';
-        $int = -1;        
-        $exec = exec($command, $out, $int);
-        */
-        
         
         $count = count($this->fileArr);        
         $pbVirus = new \ProgressBar\Manager(0, $count);
@@ -418,6 +420,8 @@ class Checking {
 
 
     /**
+     * 
+     * Check the directory files
      *      
      * @param array $mimeTypes
      * @return bool
@@ -637,8 +641,63 @@ class Checking {
         return $fileList;
     }
     
-   
+    /**
+     * 
+     * Generate HTML file from the Virus report
+     * 
+     * @return string
+     */
+    private function generateVirusReport(): string{
+        
+        if(empty($this->dirList)){
+            echo "ERROR generateErrorReport function has no data \n\n".$f;            
+            return false;
+        }
+        
+        $virusHTML = "";
+        
+        if($this->errors){
+            $virusHTML = '<div class="card" id="errors">
+                        <div class="header">
+                            <h4 class="title">Virus report</h4>                            
+                        </div>
+                    <div class="content table-responsive table-full-width" >';
+            $virusHTML .= "<table class=\"table table-hover table-striped\" >\n";
+            $virusHTML .= "<thead>\n";
+            $virusHTML .= "<tr><th><b>Error description</b></th><th><b>Filename/Error information</b></th></tr>\n";
+            $virusHTML .= "</thead>\n";
+            $virusHTML .= "<tbody>\n";
+            
+            if(!empty($this->errors['VF']) && count($this->errors['VF']) > 0){
+                $virusHTML .= "<tr>\n";
+                $virusHTML .= "<td>\n";
+                $virusHTML .= "Virus checking results:\n";
+                $virusHTML .= "</td>\n";
+                $virusHTML .= "<td>\n";
+                foreach($this->errors['VF'] as $f){
+                    $virusHTML .= $f."\n";
+                }
+                
+                $virusHTML .= "</td>\n";
+                $virusHTML .= "</tr>\n";                
+            }
+            
+            $virusHTML .= "</tbody>\n";
+            $virusHTML .= "</table>\n\n";
+            $virusHTML .= "</div>\n\n";
+            $virusHTML .= "</div>\n\n";        
+        }
+        
+        return $virusHTML;
+    }
     
+   
+    /**
+     * 
+     * Generate HTML file from the error list
+     * 
+     * @return string
+     */
     private function generateErrorReport(): string{
         
         if(empty($this->dirList)){
@@ -660,19 +719,19 @@ class Checking {
             $errorList .= "</thead>\n";
             $errorList .= "<tbody>\n";
             
-            if(!empty($this->errors['VF']) && count($this->errors['VF']) > 0){
+            if(!empty($this->errors['blackList']) && count($this->errors['blackList']) > 0){
                 $errorList .= "<tr>\n";
                 $errorList .= "<td>\n";
-                $errorList .= "Virus checking results:\n";
+                $errorList .= "Black listed file(s):\n";
                 $errorList .= "</td>\n";
                 $errorList .= "<td>\n";
-                foreach($this->errors['VF'] as $f){
+                foreach($this->errors['blackList'] as $f){
                     $errorList .= $f;
-                }
-                
+                }                
                 $errorList .= "</td>\n";
                 $errorList .= "</tr>\n";                
             }
+                    
 
             if(!empty($this->errors['tmpDIR']) && count($this->errors['tmpDIR']) > 0){
                 foreach($this->errors['tmpDIR'] as $f){
