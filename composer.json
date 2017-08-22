@@ -1,7 +1,0 @@
-{
-    "require": {
-        "guiguiboy/php-cli-progress-bar": "0.0.4",
-	"scholarslab/bagit": "~0.2",
-	"smalot/pdfparser": "*"
-    }
-}

@@ -451,12 +451,14 @@ class Checking {
                 if(isset($file['extension'])){
                     if(!isset($mimeTypes[$file['extension']]) && $file['type'] != "dir"){
                         $this->errors['MIME'][$file['filename']]['filename'] = $file['filename'];
+                        $this->errors['MIME'][$file['filename']]['name'] = $file['name'];
                         $this->errors['MIME'][$file['filename']]['type'] = $file['type'];
                         $this->errors['MIME'][$file['filename']]['extension'] = $file['extension'];                        
                         //checking the array extensions list too
                     }else if(is_array($mimeTypes[$file['extension']])
                             && !in_array($file['type'], $mimeTypes[$file['extension']]) && $file['type'] != "dir"){
                         $this->errors['MIME'][$file['filename']]['filename'] = $file['filename'];
+                        $this->errors['MIME'][$file['filename']]['name'] = $file['name'];
                         $this->errors['MIME'][$file['filename']]['type'] = $file['type'];
                         $this->errors['MIME'][$file['filename']]['extension'] = $file['extension'];
                     }
@@ -727,9 +729,9 @@ class Checking {
                 $errorList .= "<td>\n";
                 foreach($this->errors['blackList'] as $f){
                     $errorList .= $f;
-                }                
+                }
                 $errorList .= "</td>\n";
-                $errorList .= "</tr>\n";                
+                $errorList .= "</tr>\n";
             }
                     
 
@@ -765,7 +767,7 @@ class Checking {
                 foreach($this->errors['MIME'] as $value){
                     $errorList .= "<tr>\n";
                     $errorList .= "<td>ERROR WRONG MIME TYPES </td>\n";
-                    $errorList .= "<td>FileName: {$value['filename']}<br> Extension: {$value['extension']} <br> MIME type: {$value['type']} </td>\n";
+                    $errorList .= "<td>FileName: {$value['name']}<br> Extension: {$value['extension']} <br> MIME type: {$value['type']} </td>\n";
                     $errorList .= "</tr>\n";
                 }
             }
@@ -815,20 +817,23 @@ class Checking {
             if(!empty($this->errors['bagITError']) && count($this->errors['bagITError']) > 0){
                 
                 foreach($this->errors['bagITError'] as $k => $v){                    
-                    $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR BagIT file validation Error: </td>\n";
-                    $errorList .= "<td>BagIT filename: {$k} <br><br>";
-                    $errorList .= "Errors: <br>";
+                    
+                    if(count($v) > 0){
+                        $errorList .= "<tr>\n";
+                        $errorList .= "<td>ERROR BagIT file validation Error: </td>\n";
+                        $errorList .= "<td>BagIT filename: {$k} <br><br>";
+                        $errorList .= "Errors: <br>";
                         foreach($v as $val){
                             if(isset($val[0])){
                                 $errorList .= "Filename:{$val[0]} <br> ";
                             }
                             if(isset($val[1])){
                                 $errorList .= "Error description:{$val[1]} <br> ";
-                            }                            
+                            }
                         }
-                    $errorList .= "</td>\n";    
-                    $errorList .= "</tr>\n";
+                        $errorList .= "</td>\n";    
+                        $errorList .= "</tr>\n";
+                    }
                 }
             }
             
