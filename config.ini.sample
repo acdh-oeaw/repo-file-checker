@@ -1,2 +1,4 @@
 tmpDir="MY_TEMP_DIR"
 reportDir="MY_REPORTS_DIR"
+
+blackList[] = "app,apk,cfg"

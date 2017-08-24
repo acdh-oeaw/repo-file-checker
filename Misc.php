@@ -5,8 +5,7 @@ namespace OEAW\Checks;
 
 
 class Misc {
-    
-    
+        
     public static $whiteList = array(
         'PDF','ODT','DOCX','DOC','RTF','SXW','TXT','XML','SGML','HTML','DTD','XSD',
         'TIFF','DNG','PNG','JPEG','GIF','BMP','PSD','CPT','JPEG2000','SVG','CGM',
@@ -15,16 +14,6 @@ class Misc {
         'MPEG','AVI','MOV','ASF/WMV','OGG','FLV','FLAC','WAV','BWF','RF64','MBWF',
         'AAC','MP4','MP3','AIFF','WMA','X3D','COLLADA','OBJ','PLY','VRML','U3D',
         'STL','XHTML','MHTML','WARC','MAFF');
-    
-    public static $blackList = array(
-        '386','acc*','acm','act*','apk','app','ash*','asm*','asx*','ax','bat',
-        'bin','ccc','cgi','cmd','com*','cpl','cpp','csh','dll','drv','elf',
-        'exe','fxp','gad*','hta*','htp*','ico','inf','ins','inx','ipa','isu',
-        'job','js','jse','ksh','lnk','msc','msi','msp','mst','net','ocx','ops',
-        'org','osx','out','paf','php*','pif','pl','prg','ps1','reg','rgs','rs',
-        'run','scr*','sct','shb','shs','sql*','sys','u3p','url','vb','vbe',
-        'vbs*','wor*','ws','wsf');
-    
     
      /**
      * 

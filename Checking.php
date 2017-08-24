@@ -21,12 +21,17 @@ class Checking {
     private $misc;
     private $dirArr = array();
     private $fileArr = array();
+    private $blackList = array();
     
     
     public function __construct(){
-                
-        $cfg = parse_ini_file('config.ini');        
+        $this->misc = new MC();
         
+        $cfg = parse_ini_file('config.ini');        
+        $bl = $cfg['blackList'];
+        $bl = explode(",", trim($bl[0]));
+        $this->blackList = array_map('trim',$bl); 
+         
         if($this->checkTmpDir($cfg['tmpDir'])){
             $this->tmpDir = $cfg['tmpDir'];
         }else {
@@ -39,7 +44,7 @@ class Checking {
             die();
         }
         
-        $this->misc = new MC();
+        
     }
     
     /**
@@ -136,7 +141,7 @@ class Checking {
      * @param array $file
      */
     private function checkBlackList(array $file) {
-        $bl = $this->misc::$blackList;
+        $bl = $this->blackList;
         
         if(isset($file['extension'])){
             foreach ($bl as $b){
