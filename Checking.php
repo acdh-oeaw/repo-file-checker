@@ -45,8 +45,7 @@ class Checking {
      * @param string $dir
      * @return type
      */
-    public function startChecking(string $dir, int $option){
-             
+    public function startChecking(string $dir, int $option, int $output = 0){
         
         $mimeTypes = $this->misc->getMIME();
         $this->dirList = $this->getFileList($dir, true);
@@ -66,36 +65,96 @@ class Checking {
         //create the file list html
         $fn = date('Y_m_d_H_i_s');
         mkdir($this->reportDir.'/'.$fn);
-        copy('template/style.css', $this->reportDir.'/'.$fn.'/style.css');
-        copy('template/jquery.js', $this->reportDir.'/'.$fn.'/jquery.js');
-        copy('template/jquery.dataTables.css', $this->reportDir.'/'.$fn.'/jquery.dataTables.css');
-        copy('template/jquery.dataTables.js', $this->reportDir.'/'.$fn.'/jquery.dataTables.js');
         
-        $template=file_get_contents('template/template.html');
+        if($output == 0){
+            
+            copy('template/style.css', $this->reportDir.'/'.$fn.'/style.css');
+            copy('template/jquery.js', $this->reportDir.'/'.$fn.'/jquery.js');
+            copy('template/jquery.dataTables.css', $this->reportDir.'/'.$fn.'/jquery.dataTables.css');
+            copy('template/jquery.dataTables.js', $this->reportDir.'/'.$fn.'/jquery.dataTables.js');
+
+            $template=file_get_contents('template/template.html');
         
-        if(!empty($fList = $this->generateFileListHtml())){
-            $tpl=str_replace("{html_file_content}", $fList,$template);
-        }else {
-            $tpl=str_replace("{html_file_content}", "File list is empty",$template);
-        }
-        file_put_contents($this->reportDir.'/'.$fn.'/fileList.html', $tpl.PHP_EOL , FILE_APPEND | LOCK_EX);
-        
-        if(!empty($fTypeList = $this->generateFileTypeList())){
-            $tplFL=str_replace("{html_file_content}", $fTypeList,$template);
-        }else{
-            $tplFL=str_replace("{html_file_content}", "File Type list is empty",$template);
-        }
-        file_put_contents($this->reportDir.'/'.$fn.'/fileTypeList.html', $tplFL.PHP_EOL , FILE_APPEND | LOCK_EX);
-        
-        if($this->errors){
-            $errorList = $this->generateErrorReport();
-            if(!empty($errorList)){
-                $tplE=str_replace("{html_file_content}", $errorList,$template);
+            if(!empty($fList = $this->generateFileListHtml())){
+                $tpl=str_replace("{html_file_content}", $fList,$template);
+            }else {
+                $tpl=str_replace("{html_file_content}", "File list is empty",$template);
             }
-        }else{
-            $tplE=str_replace("{html_file_content}", "Error list is empty",$template);
+            file_put_contents($this->reportDir.'/'.$fn.'/fileList.html', $tpl.PHP_EOL , FILE_APPEND | LOCK_EX);
+
+            if(!empty($fTypeList = $this->generateFileTypeList())){
+                $tplFL=str_replace("{html_file_content}", $fTypeList,$template);
+            }else{
+                $tplFL=str_replace("{html_file_content}", "File Type list is empty",$template);
+            }
+            file_put_contents($this->reportDir.'/'.$fn.'/fileTypeList.html', $tplFL.PHP_EOL , FILE_APPEND | LOCK_EX);
+
+            if($this->errors){
+                $errorList = $this->generateErrorReport();
+                if(!empty($errorList)){
+                    $tplE=str_replace("{html_file_content}", $errorList,$template);
+                }
+            }else{
+                $tplE=str_replace("{html_file_content}", "Error list is empty",$template);
+            }
+            file_put_contents($this->reportDir.'/'.$fn.'/errorList.html', $tplE.PHP_EOL , FILE_APPEND | LOCK_EX);
         }
-        file_put_contents($this->reportDir.'/'.$fn.'/errorList.html', $tplE.PHP_EOL , FILE_APPEND | LOCK_EX);
+        if($output == 1){
+            
+            //file list
+            if(!empty($fList = $this->generateJsonFileList())){
+                $flJson = fopen($this->reportDir.'/'.$fn.'/fileList.json', "w");
+                fwrite($flJson, $fList);
+                fclose($flJson);
+            }
+            
+            if($this->errors){
+                $errJson = fopen($this->reportDir.'/'.$fn.'/error.json', "w");
+                fwrite($errJson, json_encode($this->errors));
+                fclose($errJson);
+            }
+            
+            if(!empty($ftList = $this->generateJsonFileTypeList())){
+                $ftJson = fopen($this->reportDir.'/'.$fn.'/fileType.json', "w");
+                fwrite($ftJson, $ftList);
+                fclose($ftJson);
+            }
+        }
+        
+    }
+    
+    /**
+     * 
+     *  Generate json data from the file list
+     * 
+     * @return string - json encoded array
+     */
+    private function generateJsonFileList(): string{
+        if(empty($this->dirList)){
+            echo "ERROR generateFileListHtml function has no data \n\n".$f;            
+            return false;
+        }
+        $dirArr = array();
+        $fileArr = array();
+        
+        //create file and dir array for the lists
+        foreach($this->dirList as $file) {            
+            if($file['type'] == "dir"){                
+                //get the folder depth
+                $dirDepth = array();
+                $dir = str_replace($this->dir."/", "", $file["name"]);
+                if(!empty($dir)){
+                    $dirDepth = explode("/", $dir);
+                    $file["dirDepth"] = count(array_filter($dirDepth));
+                }
+                $dirArr[] = $file;                
+            }else {
+                $fileArr[] = $file;
+            }
+        }
+        $dirArr[] = array("directory" => $this->dir."/", "name" => $this->dir."/", "filename" => "root_dir");
+        
+        return json_encode($fileArr);
     }
     
     /**
@@ -185,6 +244,63 @@ class Checking {
                 
         return $fileList;
     }
+    
+    /**
+     * 
+     * This function creates a json data from the file types
+     * 
+     * @return string
+     */
+    private function generateJsonFileTypeList(): string {
+        if(empty($this->dirList)){
+            echo "ERROR genereateFileTypeList function has no data \n\n".$f;            
+            return false;
+        }
+                
+        $extensionList = array();
+        $directoryList = array();
+        $result = array();
+        
+        foreach($this->dirList as $d){
+            if(isset($d["extension"])){                
+                $extensionList[$d["extension"]][] = $d;
+            }else{
+                $directoryList[] = $d;
+            }
+        }
+        
+        //sort alphabetically the extension array elements
+        ksort($extensionList, SORT_STRING);
+        
+        $i = 0;
+        foreach($extensionList as $k => $v){
+            $fileSumSize = 0;
+            $fileCount = 0;
+            $min = 0;
+            $max = 0;
+            $size = array_column($v, 'size');
+            $min = min($size);
+            $max = max($size);
+            
+            foreach($v as $val){
+                $fileSumSize += $val["size"];
+                $fileCount += 1;
+            }
+            
+            $avgSize = $fileSumSize / $fileCount;
+
+            $result[$i]['Extension'] = $k;
+            $result[$i]['Count'] = $fileCount;
+            $result[$i]['SumSize'] = $this->misc->formatSizeUnits($fileSumSize);
+            $result[$i]['AvgSize'] = $this->misc->formatSizeUnits($avgSize);
+            $result[$i]['MinSize'] = $this->misc->formatSizeUnits($min);
+            $result[$i]['MaxSize'] = $this->misc->formatSizeUnits($max);
+            
+            $i++;
+        }       
+        return json_encode($result);
+    }
+    
 
     /**
      * 
@@ -570,7 +686,11 @@ class Checking {
     }
     
    
-    
+    /**
+     * Genereate the error report
+     * 
+     * @return string
+     */
     private function generateErrorReport(): string{
         
         if(empty($this->dirList)){
