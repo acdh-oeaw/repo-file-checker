@@ -19,11 +19,19 @@ class Checking {
     private $dir;
     private $bagitFiles = array();
     private $misc;
+    private $dirArr = array();
+    private $fileArr = array();
+    private $blackList = array();
+    
     
     public function __construct(){
-                
-        $cfg = parse_ini_file('config.ini');        
+        $this->misc = new MC();
         
+        $cfg = parse_ini_file('config.ini');        
+        $bl = $cfg['blackList'];
+        $bl = explode(",", trim($bl[0]));
+        $this->blackList = array_map('trim',$bl); 
+         
         if($this->checkTmpDir($cfg['tmpDir'])){
             $this->tmpDir = $cfg['tmpDir'];
         }else {
@@ -35,8 +43,6 @@ class Checking {
         }else {
             die();
         }
-        
-        $this->misc = new MC();
     }
     
     /**
@@ -45,6 +51,7 @@ class Checking {
      * @param string $dir
      * @return type
      */
+
     public function startChecking(string $dir, int $option, int $output = 0){
         
         $mimeTypes = $this->misc->getMIME();
@@ -55,9 +62,27 @@ class Checking {
             echo "\nERROR there are no files!!! \n\n";
             return;
         }
+                
+        //create file and dir array for the lists
+        foreach($this->dirList as $file) {            
+            if($file['type'] == "dir"){
+                //get the folder depth
+                $dirDepth = array();
+                $dir = str_replace($this->dir."/", "", $file["name"]);
+                if(!empty($dir)){
+                    $dirDepth = explode("/", $dir);
+                    $file["dirDepth"] = count(array_filter($dirDepth));
+                }
+                $this->dirArr[] = $file;
+            }else {
+                $this->checkBlackList($file);
+                $this->fileArr[] = $file;
+            }
+        }
+        $this->dirArr[] = array("directory" => $this->dir."/", "name" => $this->dir."/", "filename" => "root_dir");
         
         if($option == 1){
-            $this->checkVirusAndFileExtension($dir);
+            $this->checkVirus($this->fileArr);
         }
         
         $this->checkFiles($mimeTypes);
@@ -66,6 +91,7 @@ class Checking {
         $fn = date('Y_m_d_H_i_s');
         mkdir($this->reportDir.'/'.$fn);
         
+        //HTML OUTPUT
         if($output == 0){
             
             copy('template/style.css', $this->reportDir.'/'.$fn.'/style.css');
@@ -74,8 +100,8 @@ class Checking {
             copy('template/jquery.dataTables.js', $this->reportDir.'/'.$fn.'/jquery.dataTables.js');
 
             $template=file_get_contents('template/template.html');
-        
-            if(!empty($fList = $this->generateFileListHtml())){
+
+            if(!empty($fList = $this->generateFileListHtml($this->dirArr, $this->fileArr))){
                 $tpl=str_replace("{html_file_content}", $fList,$template);
             }else {
                 $tpl=str_replace("{html_file_content}", "File list is empty",$template);
@@ -91,14 +117,24 @@ class Checking {
 
             if($this->errors){
                 $errorList = $this->generateErrorReport();
+                $virusList = $this->generateVirusReport();
+
                 if(!empty($errorList)){
                     $tplE=str_replace("{html_file_content}", $errorList,$template);
                 }
+
+                if(!empty($virusList)){
+                    $tplV=str_replace("{html_file_content}", $virusList,$template);
+                }
             }else{
                 $tplE=str_replace("{html_file_content}", "Error list is empty",$template);
+                $tplV=str_replace("{html_file_content}", "Virus report is empty",$template);
             }
             file_put_contents($this->reportDir.'/'.$fn.'/errorList.html', $tplE.PHP_EOL , FILE_APPEND | LOCK_EX);
+            file_put_contents($this->reportDir.'/'.$fn.'/virusReport.html', $tplV.PHP_EOL , FILE_APPEND | LOCK_EX);
         }
+        
+        //JSON OUTPUT
         if($output == 1){
             
             //file list
@@ -120,7 +156,6 @@ class Checking {
                 fclose($ftJson);
             }
         }
-        
     }
     
     /**
@@ -136,7 +171,7 @@ class Checking {
         }
         $dirArr = array();
         $fileArr = array();
-        
+
         //create file and dir array for the lists
         foreach($this->dirList as $file) {            
             if($file['type'] == "dir"){                
@@ -155,6 +190,25 @@ class Checking {
         $dirArr[] = array("directory" => $this->dir."/", "name" => $this->dir."/", "filename" => "root_dir");
         
         return json_encode($fileArr);
+    }
+
+    
+    /**
+     * 
+     * Check the blacklisted elements
+     * 
+     * @param array $file
+     */
+    private function checkBlackList(array $file) {
+        $bl = $this->blackList;
+        
+        if(isset($file['extension'])){
+            foreach ($bl as $b){
+                if(strtolower($b) == strtolower($file['extension'])){
+                    $this->errors['blackList'][] = $file['name'];
+                }
+            }
+        }
     }
     
     /**
@@ -371,8 +425,7 @@ class Checking {
                     if(is_file($file))
                     unlink($file); // delete file
                 }
-            }
-            
+            }            
         }
         return $pwZips;
     }
@@ -393,11 +446,13 @@ class Checking {
         
         foreach($pdfFiles as $file){
             $pbPDF->advance();
+            
             try {
-                if(strpos(fgets(fopen($file, 'r')), "%PDF-1.4") !== false){
-                    throw new \Exception("We are not supported the PDF 1.4 version");
+                if((strpos(fgets(fopen($file, 'r')), "%PDF-1.4") !== false) || (strpos(fgets(fopen($file, 'r')), "%PDF") !== false)){
+                    $errMsg = "We are not supported the PDF 1.4 version";
+                    continue;
                 }else {
-                    $parser->parseFile($file); 
+                    $parser->parseFile($file);
                 }
                 
             }catch(\Exception $e) {
@@ -423,31 +478,71 @@ class Checking {
      * @param string $str
      * @return bool
      */
-    private function checkVirusAndFileExtension(string $str): bool{
+    private function checkVirus(array $data): bool{
 
-        echo "\n######## - Virus and File Extension checking Starting - ########\n";
-        //check the viruses
-        include 'phpMussel\loader.php';
+        echo "\n######## - Virus check Starting - ########\n";
         
-        $virusRes = $phpMussel['Scan']($str, true, false);
+        $count = count($this->fileArr);        
+        $pbVirus = new \ProgressBar\Manager(0, $count);
+        
+        $safe_path = escapeshellarg($this->dir);
+        $cmd = "clamscan -r --bell " . $safe_path;
 
-        //get the problematic files
-        foreach($virusRes as $res){            
-            if ((strpos($res, 'No problems') === false)) { 
-                $this->errors['VF'][] = $res;                 
-            }
+        $descriptorspec = array(
+            0 => array("pipe", "r"), 
+            1 => array("pipe", "w"), 
+            2 => array("pipe", "a")
+        );
+
+        $pipes = array();
+        
+        $process = proc_open($cmd, $descriptorspec, $pipes, null, null);
+
+        echo "Start process:\n";
+
+        $str = "";
+        $res = "";
+        $i = 0;        
+        if(is_resource($process)) {
+            do {
+                $i++; 
+                $curStr = fgets($pipes[1]);  //will wait for a end of line
+                echo $curStr;
+                echo "\n";
+                $str .= $curStr;
+                $arr = proc_get_status($process);
+                //get the final result
+                if($i > $count){
+                    $res .= $curStr."\n";
+                }
+                
+                if($i <= $count){
+                    $pbVirus->advance();
+                }
+                
+            }while($arr['running']);
+        }else{
+            echo "Unable to start process\n";
+        }
+
+        fclose($pipes[0]);
+        fclose($pipes[1]);
+        fclose($pipes[2]);
+        proc_close($process);
+
+        
+        if(!empty($res)){
+            $this->errors['VF'][] = $res;
         }
         
-        if(isset($this->errors['VF']) && (count($this->errors['VF']) > 0)){
-            echo "\nERROR During the Virus and File checking, please check the report\n";
-        }
-        
-        echo "\n######## - Virus and File Extension checking Ended - ########\n";        
+        echo "\n######## - Virus check Ended - ########\n";        
         return true;
     }
 
 
     /**
+     * 
+     * Check the directory files
      *      
      * @param array $mimeTypes
      * @return bool
@@ -477,12 +572,14 @@ class Checking {
                 if(isset($file['extension'])){
                     if(!isset($mimeTypes[$file['extension']]) && $file['type'] != "dir"){
                         $this->errors['MIME'][$file['filename']]['filename'] = $file['filename'];
+                        $this->errors['MIME'][$file['filename']]['name'] = $file['name'];
                         $this->errors['MIME'][$file['filename']]['type'] = $file['type'];
                         $this->errors['MIME'][$file['filename']]['extension'] = $file['extension'];                        
                         //checking the array extensions list too
                     }else if(is_array($mimeTypes[$file['extension']])
                             && !in_array($file['type'], $mimeTypes[$file['extension']]) && $file['type'] != "dir"){
                         $this->errors['MIME'][$file['filename']]['filename'] = $file['filename'];
+                        $this->errors['MIME'][$file['filename']]['name'] = $file['name'];
                         $this->errors['MIME'][$file['filename']]['type'] = $file['type'];
                         $this->errors['MIME'][$file['filename']]['extension'] = $file['extension'];
                     }
@@ -594,31 +691,13 @@ class Checking {
      * @param array $data
      * @return boolean
      */
-    private function generateFileListHtml(): string {
+    private function generateFileListHtml(array $dirArr, array $fileArr): string {
         
         if(empty($this->dirList)){
             echo "ERROR generateFileListHtml function has no data \n\n".$f;            
             return false;
         }
-        $dirArr = array();
-        $fileArr = array();
-        
-        //create file and dir array for the lists
-        foreach($this->dirList as $file) {            
-            if($file['type'] == "dir"){                
-                //get the folder depth
-                $dirDepth = array();
-                $dir = str_replace($this->dir."/", "", $file["name"]);
-                if(!empty($dir)){
-                    $dirDepth = explode("/", $dir);
-                    $file["dirDepth"] = count(array_filter($dirDepth));
-                }
-                $dirArr[] = $file;                
-            }else {
-                $fileArr[] = $file;
-            }
-        }
-        $dirArr[] = array("directory" => $this->dir."/", "name" => $this->dir."/", "filename" => "root_dir");
+       
         
         $dirFileSizes = array();        
         $fileList = "";
@@ -684,10 +763,65 @@ class Checking {
         
         return $fileList;
     }
-    
+
    
     /**
      * Genereate the error report
+=======
+    /**
+     * 
+     * Generate HTML file from the Virus report
+     * 
+     * @return string
+     */
+    private function generateVirusReport(): string{
+        
+        if(empty($this->dirList)){
+            echo "ERROR generateErrorReport function has no data \n\n".$f;            
+            return false;
+        }
+        
+        $virusHTML = "";
+        
+        if($this->errors){
+            $virusHTML = '<div class="card" id="errors">
+                        <div class="header">
+                            <h4 class="title">Virus report</h4>                            
+                        </div>
+                    <div class="content table-responsive table-full-width" >';
+            $virusHTML .= "<table class=\"table table-hover table-striped\" >\n";
+            $virusHTML .= "<thead>\n";
+            $virusHTML .= "<tr><th><b>Error description</b></th><th><b>Filename/Error information</b></th></tr>\n";
+            $virusHTML .= "</thead>\n";
+            $virusHTML .= "<tbody>\n";
+            
+            if(!empty($this->errors['VF']) && count($this->errors['VF']) > 0){
+                $virusHTML .= "<tr>\n";
+                $virusHTML .= "<td>\n";
+                $virusHTML .= "Virus checking results:\n";
+                $virusHTML .= "</td>\n";
+                $virusHTML .= "<td>\n";
+                foreach($this->errors['VF'] as $f){
+                    $virusHTML .= $f."\n";
+                }
+                
+                $virusHTML .= "</td>\n";
+                $virusHTML .= "</tr>\n";                
+            }
+            
+            $virusHTML .= "</tbody>\n";
+            $virusHTML .= "</table>\n\n";
+            $virusHTML .= "</div>\n\n";
+            $virusHTML .= "</div>\n\n";        
+        }
+        
+        return $virusHTML;
+    }
+    
+   
+    /**
+     * 
+     * Generate HTML file from the error list
      * 
      * @return string
      */
@@ -712,22 +846,17 @@ class Checking {
             $errorList .= "</thead>\n";
             $errorList .= "<tbody>\n";
             
-            if(!empty($this->errors['VF']) && count($this->errors['VF']) > 0){
-                foreach($this->errors['VF'] as $f){
-                    $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR during the Virus and File Extension checking </td>\n";
-                    
-                    if (strpos($f, 'blacklist') !== false) {
-                        $errorList .= "<td style='color:white; background-color:#FFB74D'>";
-                    } elseif(strpos($f, 'chameleon') !== false){
-                        $errorList .= "<td style='color:white; background-color:#2c3e50'>";
-                    } else {
-                        $errorList .= "<td>";
-                    }
-                    
-                    $errorList .= "{$f}</td>\n";
-                    $errorList .= "</tr>\n";
+            if(!empty($this->errors['blackList']) && count($this->errors['blackList']) > 0){
+                $errorList .= "<tr>\n";
+                $errorList .= "<td>\n";
+                $errorList .= "Black listed file(s):\n";
+                $errorList .= "</td>\n";
+                $errorList .= "<td>\n";
+                foreach($this->errors['blackList'] as $f){
+                    $errorList .= $f;
                 }
+                $errorList .= "</td>\n";
+                $errorList .= "</tr>\n";
             }
 
             if(!empty($this->errors['tmpDIR']) && count($this->errors['tmpDIR']) > 0){
@@ -762,7 +891,7 @@ class Checking {
                 foreach($this->errors['MIME'] as $value){
                     $errorList .= "<tr>\n";
                     $errorList .= "<td>ERROR WRONG MIME TYPES </td>\n";
-                    $errorList .= "<td>FileName: {$value['filename']}<br> Extension: {$value['extension']} <br> MIME type: {$value['type']} </td>\n";
+                    $errorList .= "<td>FileName: {$value['name']}<br> Extension: {$value['extension']} <br> MIME type: {$value['type']} </td>\n";
                     $errorList .= "</tr>\n";
                 }
             }
@@ -812,20 +941,23 @@ class Checking {
             if(!empty($this->errors['bagITError']) && count($this->errors['bagITError']) > 0){
                 
                 foreach($this->errors['bagITError'] as $k => $v){                    
-                    $errorList .= "<tr>\n";
-                    $errorList .= "<td>ERROR BagIT file validation Error: </td>\n";
-                    $errorList .= "<td>BagIT filename: {$k} <br><br>";
-                    $errorList .= "Errors: <br>";
+                    
+                    if(count($v) > 0){
+                        $errorList .= "<tr>\n";
+                        $errorList .= "<td>ERROR BagIT file validation Error: </td>\n";
+                        $errorList .= "<td>BagIT filename: {$k} <br><br>";
+                        $errorList .= "Errors: <br>";
                         foreach($v as $val){
                             if(isset($val[0])){
                                 $errorList .= "Filename:{$val[0]} <br> ";
                             }
                             if(isset($val[1])){
                                 $errorList .= "Error description:{$val[1]} <br> ";
-                            }                            
+                            }
                         }
-                    $errorList .= "</td>\n";    
-                    $errorList .= "</tr>\n";
+                        $errorList .= "</td>\n";    
+                        $errorList .= "</tr>\n";
+                    }
                 }
             }
             

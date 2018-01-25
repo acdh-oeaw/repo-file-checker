@@ -5,8 +5,15 @@ namespace OEAW\Checks;
 
 
 class Misc {
-    
-    
+        
+    public static $whiteList = array(
+        'PDF','ODT','DOCX','DOC','RTF','SXW','TXT','XML','SGML','HTML','DTD','XSD',
+        'TIFF','DNG','PNG','JPEG','GIF','BMP','PSD','CPT','JPEG2000','SVG','CGM',
+        'DXF','DWG','PostScript','AI','DWF','CSV','TSV','ODS','XLSX','SXC','XLS',
+        'SIARD','SQL','JSON','MDB','FMP','DBF','BAK','ODB','MKV','MJ2','MP4','MXF',
+        'MPEG','AVI','MOV','ASF/WMV','OGG','FLV','FLAC','WAV','BWF','RF64','MBWF',
+        'AAC','MP4','MP3','AIFF','WMA','X3D','COLLADA','OBJ','PLY','VRML','U3D',
+        'STL','XHTML','MHTML','WARC','MAFF');
     
      /**
      * 

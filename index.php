@@ -3,7 +3,7 @@
 use OEAW\Checks\Checking as CH;
 require_once 'Checking.php';
 
-if ($argc < 3 || !file_exists($argv[1])) {
+if ($argc < 4 || !file_exists($argv[1])) {
     echo "\nusage: $argv[0] directory_name 0\n\n"
             . "0 => check files\n"
             . "1 => check files and viruses\n"
@@ -13,9 +13,7 @@ if ($argc < 3 || !file_exists($argv[1])) {
 
 $dir = $argv[1];
 $option = (int)$argv[2];
-if( isset($argv[3]) && !empty($argv[3]) ){
-    $output = (int)$argv[3];
-}
+$output = (int)$argv[3];
 
 $ch = new CH();
 echo $ch->startChecking($dir, $option, $output);
