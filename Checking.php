@@ -767,7 +767,6 @@ class Checking {
    
     /**
      * Genereate the error report
-=======
     /**
      * 
      * Generate HTML file from the Virus report
