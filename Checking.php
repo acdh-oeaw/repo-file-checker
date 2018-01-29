@@ -429,7 +429,7 @@ class Checking {
         }
         return $pwZips;
     }
-    
+        
     /**
      * 
      * Check the pdf files, if some of them contains Password then it will be added to the return array
@@ -607,6 +607,13 @@ class Checking {
                     }
                 }
 
+                //check the directory valid name
+                if($file['type'] == "dir"){
+                    if(preg_match('/[^A-Za-z0-9\_\(\)\-\.]/', $file["name"])){ 
+                        $this->errors['WRONG_DIR_Name'][] = $file['name'];
+                    }   
+                }
+                
                 //if the file name is not valid
                 if($file['valid_file'] == false){
                     $this->errors['WRONGFILES'][] = $file['name'];                 
@@ -881,6 +888,15 @@ class Checking {
                     $errorList .= "<tr>\n";
                     $errorList .= "<td>ERROR Password protected zip file(s) or wrong zip file(s): </td>\n";
                     $errorList .= "<td>{$f}</td>\n";
+                    $errorList .= "</tr>\n";
+                }
+            }
+            
+            if(!empty($this->errors['WRONG_DIR_Name']) && count($this->errors['WRONG_DIR_Name'])  > 0){
+                foreach($this->errors['WRONG_DIR_Name'] as $value){
+                    $errorList .= "<tr>\n";
+                    $errorList .= "<td>ERROR WRONG DIRECTORY NAME </td>\n";
+                    $errorList .= "<td>Directory: {$value}<br> </td>\n";
                     $errorList .= "</tr>\n";
                 }
             }
