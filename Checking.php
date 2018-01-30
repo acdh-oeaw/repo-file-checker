@@ -140,7 +140,10 @@ class Checking {
             //file list
             if(!empty($fList = $this->generateJsonFileList())){
                 $flJson = fopen($this->reportDir.'/'.$fn.'/fileList.json', "w");
-                fwrite($flJson, $fList);
+                $pieces = str_split($fList, 1024 * 4);
+                foreach ($pieces as $piece) {
+                    fwrite($flJson, $piece, strlen($piece));
+                }
                 fclose($flJson);
             }
             
