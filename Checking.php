@@ -138,7 +138,7 @@ class Checking {
         if($output == 1){
             
             //file list
-            if(!empty($fList = $this->generateJsonFileList())){
+            if(!empty($fList = $this->generateJsonFileList($this->fileArr))){
                 $flJson = fopen($this->reportDir.'/'.$fn.'/fileList.json', "w");
                 $pieces = str_split($fList, 1024 * 4);
                 foreach ($pieces as $piece) {
@@ -167,32 +167,14 @@ class Checking {
      * 
      * @return string - json encoded array
      */
-    private function generateJsonFileList(): string{
-        if(empty($this->dirList)){
-            echo "ERROR generateFileListHtml function has no data \n\n".$f;            
-            return false;
-        }
-        $dirArr = array();
-        $fileArr = array();
-
-        //create file and dir array for the lists
-        foreach($this->dirList as $file) {            
-            if($file['type'] == "dir"){                
-                //get the folder depth
-                $dirDepth = array();
-                $dir = str_replace($this->dir."/", "", $file["name"]);
-                if(!empty($dir)){
-                    $dirDepth = explode("/", $dir);
-                    $file["dirDepth"] = count(array_filter($dirDepth));
-                }
-                $dirArr[] = $file;                
-            }else {
-                $fileArr[] = $file;
-            }
-        }
-        $dirArr[] = array("directory" => $this->dir."/", "name" => $this->dir."/", "filename" => "root_dir");
+    private function generateJsonFileList(array $fileArr): string{
+        $result = "";
+        $result = json_encode($fileArr, JSON_UNESCAPED_SLASHES);
+        $result = str_replace("\\/", "/", $result);
+        $result = str_replace("\\", "/", $result);
+        $result = str_replace("//", "/", $result);
         
-        return json_encode($fileArr);
+        return stripslashes($result);
     }
 
     
