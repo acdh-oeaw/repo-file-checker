@@ -595,7 +595,10 @@ class Checking {
                 //check the directory valid name
                 if($file['type'] == "dir"){
                     if(preg_match('/[^A-Za-z0-9\_\(\)\-\.]/', $file["name"])){ 
-                        $this->errors['WRONG_DIR_Name'][] = $file['name'];
+                        if(!preg_match('/^[a-zA-Z]\:[\/,\\\\].{1,}/', $file["name"])) {
+                            $this->errors['WRONG_DIR_Name'][] = $file['name'];    
+                        }
+                        
                     }   
                 }
                 
