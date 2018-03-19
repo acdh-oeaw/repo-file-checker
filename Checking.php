@@ -159,6 +159,31 @@ class Checking {
                 fclose($ftJson);
             }
         }
+		    //NDJSON OUTPUT
+        if($output == 2){
+            
+            //file list
+            if(!empty($fList = $this->generateNDJsonFileList($this->fileArr))){
+                $flJson = fopen($this->reportDir.'/'.$fn.'/fileList.json', "w");
+                $pieces = str_split($fList, 1024 * 4);
+                foreach ($pieces as $piece) {
+                    fwrite($flJson, $piece, strlen($piece));
+                }
+                fclose($flJson);
+            }
+            
+            if($this->errors){
+                $errJson = fopen($this->reportDir.'/'.$fn.'/error.json', "w");
+                fwrite($errJson, json_encode($this->errors));
+                fclose($errJson);
+            }
+            
+            if(!empty($ftList = $this->generateJsonFileTypeList())){
+                $ftJson = fopen($this->reportDir.'/'.$fn.'/fileType.json', "w");
+                fwrite($ftJson, $ftList);
+                fclose($ftJson);
+            }
+        }
     }
     
     /**
@@ -173,6 +198,27 @@ class Checking {
         $result = str_replace("\\/", "/", $result);
         $result = str_replace("\\", "/", $result);
         $result = str_replace("//", "/", $result);
+        
+        return stripslashes($result);
+    }
+
+	/**
+     * 
+     *  Generate ndjson data from the file list
+     * 
+     * @return string - newline-delimited json encoded array
+     */
+    private function generateNDJsonFileList(array $fileArr): string{
+        $index_directive = "{\"index\":{}}" ;
+		$result = "";
+		
+		foreach ($fileArr as $file) {
+			$fjson = json_encode($file, JSON_UNESCAPED_SLASHES);
+			$fjson = str_replace("\\/", "/", $fjson);
+			$fjson = str_replace("\\", "/", $fjson);
+			$fjson = str_replace("//", "/", $fjson);
+			$result .= $index_directive."\n".$fjson."\n";           
+		}
         
         return stripslashes($result);
     }
