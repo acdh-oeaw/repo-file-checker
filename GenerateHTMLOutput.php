@@ -21,11 +21,7 @@ class GenerateHTMLOutput {
      * 
      * @return string
      */
-    public function generateErrorListHtml(array $data, string $directory): bool {
-        
-       if(!count($data) > 0){
-            return false;
-        }
+    public function generateErrorListHtml(string $directory): bool {
         
         $errorList = "";
         
@@ -36,42 +32,9 @@ class GenerateHTMLOutput {
                 <div class="content table-responsive table-full-width" >';
         $errorList .= "<table class=\"table table-hover table-striped\" id=\"errorsDT\">\n";
         $errorList .= "<thead>\n";
-        $errorList .= "<tr><th><b>Error description</b></th><th><b>Filename/Error information</b></th></tr>\n";
+        $errorList .= "<tr><th><b>ErrorType</b></th><th><b>Directory</b></th><th><b>File Name</b></th></tr>\n";
         $errorList .= "</thead>\n";
-        $errorList .= "<tbody>\n";
-        foreach($data as $k){
-            $errorList .= "<tr>\n";
-            
-            $errorList .= "<td>";
-            if(isset($k->errorType)){
-                $errorList .= "{$k->errorType}";
-            }else{
-                $errorList .= "error_";
-            }
-            
-            $errorList .= "</td>\n";
         
-            $errorList .= "<td>";
-            if(isset($k->dir)){
-                $errorList .= "<b>Directory:</b> {$k->dir} \n";
-            }
-            if(isset($k->filename)){
-                $errorList .= "<b>File:</b> {$k->filename} \n";
-            }
-            if(isset($k->errorMSG)){
-                if(is_array($k->errorMSG)){
-                    $errorList .= "<b>errorMSG:</b>\n";
-                    foreach ($k->errorMSG as $v){
-                        $errorList .= serialize($v)."\n";
-                    }
-                }else{
-                    $errorList .= "<b>errorMSG:</b> {$k->errorMSG} \n";
-                }
-            }
-            $errorList .= "</td>\n";    
-            $errorList .= "</tr>\n";
-        }
-        $errorList .= "</tbody>\n";
         $errorList .= "</table>\n\n";
         $errorList .= "</div>\n\n";
         $errorList .= "</div>\n\n";        
@@ -88,12 +51,8 @@ class GenerateHTMLOutput {
      * @param array $data
      * @return boolean
      */
-    public function generateFileListHtml(array $data, string $directory): bool {
-        
-        if(!count($data) > 0){
-            return false;
-        }
-        
+    public function generateFileListHtml(string $directory): bool {
+              
         $dirFileSizes = array();        
         
         $fileList = "";
@@ -105,25 +64,15 @@ class GenerateHTMLOutput {
         $fileList .= "<table class=\"table table-hover table-striped\" id=\"filesDT\" >"
                 . "<h2>Files</h2>\n";
         $fileList .= "<thead>\n";
-        $fileList .= "<tr><th><b>Directory</b></th><th><b>Filename</b></th><th><b>Type</b></th><th><b>Size</b></th><th><b>Last Modified</b></th></tr>\n";
+        $fileList .= "<tr>"
+                . "<th><b>Filename</b></th>
+                <th><b>Directory</b></th>
+                <th><b>Extension</b></th>
+                <th><b>Type</b></th>
+                <th><b>Size</b></th>
+                <th><b>Valid</b></th>
+                </tr>\n";
         $fileList .= "</thead>\n";
-        $fileList .= "<tbody>\n";
-        
-        foreach($data as $f){
-            if(isset($dirFileSizes[$f->directory])){
-                $dirFileSizes[$f->directory] += $f->size;
-            }else {
-                $dirFileSizes[$f->directory] = $f->size;
-            }
-            $fileList .= "<tr>\n";
-            $fileList .= "<td>{$f->directory}</td>\n";
-            $fileList .= "<td>{$f->filename}</td>\n";
-            $fileList .= "<td>{$f->type}</td>\n";
-            $fileList .= "<td>".$this->misc->formatSizeUnits($f->size)."</td>\n";
-            $fileList .= "<td>".date('r', $f->lastmod)."</td>\n";
-            $fileList .= "</tr>\n";
-        }   
-        $fileList .= "</tbody>\n";
         $fileList .= "</table>\n\n";
         $fileList .= "</div>\n\n";
         $fileList .= "</div>\n\n";
@@ -134,11 +83,7 @@ class GenerateHTMLOutput {
     }
     
     
-     public function generateDirListHtml(array $data, string $directory): bool {
-        
-        if(!count($data) > 0){
-            return false;
-        }
+     public function generateDirListHtml(string $directory): bool {
         
         $fileList = "";
         $fileList = '<div class="card" id="filelist">
@@ -146,25 +91,11 @@ class GenerateHTMLOutput {
                             <h4 class="title">Directory List</h4>
                         </div>
                     <div class="content table-responsive table-full-width" >';
-        $fileList .= "<table class=\"table table-hover table-striped\" id=\"filesDT\" >"
-                . "<h2>Files</h2>\n";
+        $fileList .= "<table class=\"table table-hover table-striped\" id=\"dirsDT\" >"
+                . "<h2>Directories</h2>\n";
         $fileList .= "<thead>\n";
-        $fileList .= "<tr><th><b>Directory</b></th><th><b>Valid</b></th><th><b>Last Modified</b></th></tr>\n";
+        $fileList .= "<tr><th><b>Directory</b></th><th><b>Valid</b></th></tr>\n";
         $fileList .= "</thead>\n";
-        $fileList .= "<tbody>\n";
-        
-        foreach($data as $f){
-            $fileList .= "<tr>\n";
-            $fileList .= "<td>{$f->name}</td>\n";
-            $valid = "no";
-            if(isset($f->valid) && $f->valid === true){
-                $valid = "yes";
-            }
-            $fileList .= "<td>{$valid}</td>\n";
-            $fileList .= "<td>".date('r', $f->lastmodified)."</td>\n";
-            $fileList .= "</tr>\n";
-        }   
-        $fileList .= "</tbody>\n";
         $fileList .= "</table>\n\n";
         $fileList .= "</div>\n\n";
         $fileList .= "</div>\n\n";

@@ -12,9 +12,39 @@
 	<script type="text/javascript" language="javascript" src="jquery.dataTables.js"></script>	
 	<script type="text/javascript" language="javascript" class="init">
 		$(document).ready(function() {
-			$('#filesDT').DataTable();
-                        $('#dirsDT').DataTable();
-                        $('#errorsDT').DataTable();                        
+			$('#dirsDT').DataTable( {
+                        "ajax": "directoryList.json",
+                        "dataSrc": "data",
+                        "deferRender": true,
+                        "columns": [
+                            { "data": "name" },
+                            { "data": "valid" }
+                        ]
+                    } );
+
+                    $('#filesDT').DataTable( {
+                        "ajax": "fileList.json",
+                        "dataSrc": "data",
+                        "deferRender": true,
+                        "columns": [
+                            { "data": "filename" },
+                            { "data": "directory" },
+                            { "data": "extension" },
+                            { "data": "type" },
+                            { "data": "size" },
+                            { "data": "valid_file" }
+                        ]
+                    } );
+                    $('#errorsDT').DataTable( {
+                        "ajax": "error.json",
+                        "dataSrc": "data",
+                        "deferRender": true,
+                        "columns": [
+                            { "data": "errorType" },
+                            { "data": "dir" },
+                            { "data": "filename" }
+                        ]
+                    } );
 		} );
 	</script>
 </head>
@@ -37,11 +67,6 @@
                 <li>
                     <a href="errorList.html">                        
                         <p>Errors</p>
-                    </a>
-                </li>
-		<li>
-                    <a href="fileTypeList.html">
-                        <p>File Type List</p>
                     </a>
                 </li>
             </ul>

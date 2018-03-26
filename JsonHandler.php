@@ -78,7 +78,7 @@ class JsonHandler {
             
             //add the  ] to the end of the file
             $fh = fopen($reportDir.'/'.$type.'.json', 'a');
-            fwrite($fh, ']');
+            fwrite($fh, '] }');
             fclose($fh); 
             return true;
         }
@@ -100,7 +100,7 @@ class JsonHandler {
             
             $json = fopen($dir.'/'.$type.'.json', "a");
             if($output == "json"){
-                fwrite($json, "[");    
+                fwrite($json, '{ "data": [ ');    
             }
             fclose($json);
         }

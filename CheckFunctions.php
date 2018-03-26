@@ -154,7 +154,7 @@ class CheckFunctions {
             
         try {
             if((strpos(fgets(fopen($file, 'r')), "%PDF-1.4") !== false) ){
-                $return = array("errorType" => "PDF_Version_Above_1.4", "filename" => $file);
+                $return = array("errorType" => "PDF_Version_Above_1.4", "filename" => $file, "dir" => $file);
             }else if (strpos(fgets(fopen($file, 'r')), "%PDF") !== false) {
                 $parser->parseFile($file);
             }
@@ -162,10 +162,10 @@ class CheckFunctions {
         }catch(\Exception $e) {
 
             if (strpos($e->getMessage(), 'Secured pdf file are currently not supported') !== false) {
-                $return = array("errorType" => "Password protected PDF file", "filename" => $file);
+                $return = array("errorType" => "Password protected PDF file", "filename" => $file, "dir" => $file);
             }else {
                 $errMsg = $e->getMessage();
-                $return = array("errorType" => "PDF_Check_Error", "filename" => $file, "errorMSG" => $errMsg);
+                $return = array("errorType" => "PDF_Check_Error", "filename" => $file, "dir" => $file, "errorMSG" => $errMsg);
             }
         }
         
@@ -195,13 +195,13 @@ class CheckFunctions {
         foreach($zipFiles as $f){
            // $pbZip->advance();
             if ($za->open($f, \ZIPARCHIVE::CREATE) !== TRUE) {
-                $result[] = array("errorType" => "Zip_Open_Error", "filename" => $f);
+                $result[] = array("errorType" => "Zip_Open_Error", "filename" => $f, "dir" => $f);
             }else {
                 $za->extractTo($this->tmpDir);
                 //the zip file has a password
                 if($za->status == 26) {
                     //$pwZips[] = $f;
-                    $result[] = array("errorType" => "Zip_Password_Error", "filename" => $f);
+                    $result[] = array("errorType" => "Zip_Password_Error", "filename" => $f, "dir" => $f);
                 }
                 //get the files in the tmpDir and remove them
                 $files = glob($this->tmpDir.'\*'); // get all file names

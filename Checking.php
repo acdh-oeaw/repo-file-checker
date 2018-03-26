@@ -95,22 +95,25 @@ class Checking {
         
         if ($output == 2 || $output == 3){
             //create basic html
-            $this->fileList = $this->jsonHandler->createJsonObjFromFile($this->generatedReportDirectory.'/fileList.json');
+            $this->html->generateFileListHtml($this->generatedReportDirectory);
+            //$this->fileList = $this->jsonHandler->createJsonObjFromFile($this->generatedReportDirectory.'/fileList.json');
             if(count($this->fileList) > 0){
-                $this->html->generateFileListHtml($this->fileList, $this->generatedReportDirectory);
+                $this->html->generateFileListHtml($this->generatedReportDirectory);
             }
-            
-            $this->errorList = $this->jsonHandler->createJsonObjFromFile($this->generatedReportDirectory.'/error.json');
+            $this->html->generateErrorListHtml($this->generatedReportDirectory);
+            //$this->errorList = $this->jsonHandler->createJsonObjFromFile($this->generatedReportDirectory.'/error.json');
             if(count($this->errorList) > 0){
-                $this->html->generateErrorListHtml($this->errorList, $this->generatedReportDirectory);
+                $this->html->generateErrorListHtml($this->generatedReportDirectory);
             }
-            $this->dirList = $this->jsonHandler->createJsonObjFromFile($this->generatedReportDirectory.'/directoryList.json');
+            $this->html->generateDirListHtml($this->generatedReportDirectory);
+            //$this->dirList = $this->jsonHandler->createJsonObjFromFile($this->generatedReportDirectory.'/directoryList.json');
             if(count($this->dirList) > 0){
-                $this->html->generateDirListHtml($this->dirList, $this->generatedReportDirectory);
+                $this->html->generateDirListHtml($this->generatedReportDirectory);
             }
             
             if ( $output == 3 ){
                 //create html with filetype
+                
             }
         }
        
@@ -250,7 +253,7 @@ class Checking {
                 //check the file name validity
                 $valid = $this->chkFunc->checkDirectoryNameValidity("$dir$entry");
                 if($valid === false){
-                    $this->jsonHandler->writeDataToJsonFile( array("errorType" => "Directory_Not_Valid" ,"dir" => "$dir$entry"), "error", $this->generatedReportDirectory, $jsonOutput);
+                    $this->jsonHandler->writeDataToJsonFile( array("errorType" => "Directory_Not_Valid" ,"dir" => "$dir$entry", "filename" => ""), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
                 $retval[] = array(
