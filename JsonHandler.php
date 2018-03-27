@@ -58,6 +58,12 @@ class JsonHandler {
      */
     public function closeJsonFiles(string $reportDir, string $type): bool{
         
+        if($type == "duplicates"){
+            $pos = -1;
+        }else {
+            $pos = -2;
+        }
+        
         if(file_exists($reportDir.'/'.$type.'.json') === false){
              return false;
         }else {
@@ -65,7 +71,7 @@ class JsonHandler {
             $line = "";
             $fp = fopen($reportDir.'/'.$type.'.json', 'r+');
             //-2 because of the new line
-            $pos = -2; $line = ''; $c = '';
+             $line = ''; $c = '';
             do {
                 $line = $c . $line;
                 fseek($fp, $pos--, SEEK_END);
@@ -75,13 +81,14 @@ class JsonHandler {
             //remove the , sign from the end of the file
             ftruncate($fp, $stat['size']-2);
             fclose($fp);
-            
+
             //add the  ] to the end of the file
             $fh = fopen($reportDir.'/'.$type.'.json', 'a');
             fwrite($fh, '] }');
             fclose($fh); 
             return true;
         }
+        
     }
     
     
@@ -128,10 +135,13 @@ class JsonHandler {
      */
     public function generateJsonFileList(array $data, string $output = "json"): string{
         $result = "";
-        $result = json_encode($data, JSON_UNESCAPED_SLASHES);
+        
+        $result .= json_encode($data, JSON_UNESCAPED_SLASHES);
         $result = str_replace("\\/", "/", $result);
         $result = str_replace("\\", "/", $result);
         $result = str_replace("//", "/", $result);
+        
+        
         
         if($output == "ndjson"){
             $index_directive = "{\"index\":{}}" ;

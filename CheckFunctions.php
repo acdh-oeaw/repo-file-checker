@@ -172,7 +172,64 @@ class CheckFunctions {
         return $return;    
     }
     
+    /**
+     * 
+     * Remove the duplications from the array
+     * 
+     * @param array $data
+     * @return type
+     */
+    function makeUnique(array $data)
+    {
+        $serialized = array_map(create_function('$a', 'return $a;'), $data);
+        $unique = array_unique($serialized);
+        return $unique;
+        return array_intersect_key($unique, $data);
+    }
+    
    
+    /**
+     * 
+     *  Check the file and/or size duplications
+     * 
+     * @param array $data
+     * @return array
+     */
+    public function checkFileDuplications(array $data): array{
+        
+        $result = array();
+        foreach ($data as $current_key => $current_array) {
+            foreach ($data as $search_key => $search_array) {
+                if ( $search_array['filename'] == $current_array['filename'] ) {
+                    if ($search_key != $current_key) {
+                        if( $current_array['size'] == $search_array['size'] ){
+                            $result["Duplicate_File_And_Size"][$current_array['filename']][] = $search_array['dir'];
+                        }else {
+                            $result["Duplicate_File"][$current_array['filename']][] = $search_array['dir'];
+                        }
+                    }
+                }
+            }
+        }
+        
+       
+        $return = array();
+        if(isset($result['Duplicate_File_And_Size'])){
+            foreach($result['Duplicate_File_And_Size'] as $k => $v){
+                $return['Duplicate_File_And_Size'][$k] = $this->makeUnique($v);
+                $return['Duplicate_File_And_Size'][$k] = array_values($return['Duplicate_File_And_Size'][$k]);
+            }
+        }
+        if(isset($result['Duplicate_File'])){
+            foreach($result['Duplicate_File'] as $k => $v){
+                $return['Duplicate_File'][$k] = $this->makeUnique($v);
+                $return['Duplicate_File'][$k] = array_values($return['Duplicate_File'][$k]);
+            }
+        }
+        
+        return $return;
+    }
+    
     
     /**
      * 

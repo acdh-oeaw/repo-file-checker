@@ -74,17 +74,66 @@ class Checking {
         define('YOUR_EOL', "\n");
         
         if($output == 0 || $output == 1 || $output == 2 || $output == 3 ){
-            if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'error') === false){
-                die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'error.json');
-            }
 
             if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'fileList') === false){
                 die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'fileList.json');
             }
 
+            if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'files') === false){
+                die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'files.json');
+            }
+            
             if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'directoryList') === false){
                 die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'directoryList.json');
             }
+            
+            if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'error') === false){
+                die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'error.json');
+            }
+            
+            $duplicates = array();
+            $buffer = "";
+            $handle = fopen($this->generatedReportDirectory.'/'.'files.json', "r");
+            if ($handle) {
+                while (!feof($handle)) {
+                    $buffer .= stream_get_line($handle, 4096);
+                }
+                fclose($handle);
+            }
+            
+            if(!empty($buffer)){
+                $arr = array();
+                $arr = json_decode($buffer, true);
+                $duplicates = $this->chkFunc->checkFileDuplications($arr['data']);
+            }
+          
+            if(count($duplicates) > 0){
+                
+                if( isset($duplicates["Duplicate_File_And_Size"]) && count($duplicates["Duplicate_File_And_Size"]) > 0){
+                    foreach( $duplicates["Duplicate_File_And_Size"] as $k => $v){
+                        $arr = array();
+                        $arr[$k] = $v;
+                        $this->jsonHandler->writeDataToJsonFile( $arr, "duplicates_size", $this->generatedReportDirectory, "json");
+                    }
+                    
+                    if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'duplicates_size') === false){
+                        die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'duplicates_size.json');
+                    }
+                }
+                
+                if( isset($duplicates["Duplicate_File"]) && count($duplicates["Duplicate_File"]) > 0){
+                    foreach( $duplicates["Duplicate_File"] as $k => $v){
+                        $arr = array();
+                        $arr[$k] = $v;
+                        $this->jsonHandler->writeDataToJsonFile( $arr, "duplicates", $this->generatedReportDirectory, "json");
+                    }
+                    
+                    if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'duplicates') === false){
+                        die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'duplicates.json');
+                    }
+                }
+            }
+            
         }
         
         
@@ -96,20 +145,11 @@ class Checking {
         if ($output == 2 || $output == 3){
             //create basic html
             $this->html->generateFileListHtml($this->generatedReportDirectory);
-            //$this->fileList = $this->jsonHandler->createJsonObjFromFile($this->generatedReportDirectory.'/fileList.json');
-            if(count($this->fileList) > 0){
-                $this->html->generateFileListHtml($this->generatedReportDirectory);
-            }
+            
             $this->html->generateErrorListHtml($this->generatedReportDirectory);
-            //$this->errorList = $this->jsonHandler->createJsonObjFromFile($this->generatedReportDirectory.'/error.json');
-            if(count($this->errorList) > 0){
-                $this->html->generateErrorListHtml($this->generatedReportDirectory);
-            }
+            
             $this->html->generateDirListHtml($this->generatedReportDirectory);
-            //$this->dirList = $this->jsonHandler->createJsonObjFromFile($this->generatedReportDirectory.'/directoryList.json');
-            if(count($this->dirList) > 0){
-                $this->html->generateDirListHtml($this->generatedReportDirectory);
-            }
+            
             
             if ( $output == 3 ){
                 //create html with filetype
@@ -261,7 +301,7 @@ class Checking {
                     "directory" => "$dir",
                     "type" => filetype("$dir$entry"),
                     "size" => 0,
-                    "lastmod" => filemtime("$dir$entry"),
+                    "lastmod" => date("Y-m-d H:i:s" , filemtime("$dir$entry")),
                     "valid_file" => $valid,
                     "filename" => $entry                    
                 );
@@ -269,7 +309,7 @@ class Checking {
                 //create the directory json file
                 if(filetype("$dir$entry") == "dir"){
                     $dirData = array();
-                    $dirData = array("name" => "$dir$entry", "valid" => $valid,  "lastmodified" => filemtime("$dir$entry"));
+                    $dirData = array("name" => "$dir$entry", "valid" => $valid,  "lastmodified" => date("Y-m-d H:i:s" , filemtime("$dir$entry")));
                     $this->jsonHandler->writeDataToJsonFile($dirData, "directoryList", $this->generatedReportDirectory, $jsonOutput);
                 }  
                 
@@ -365,7 +405,7 @@ class Checking {
                     "directory" => "$dir",
                     "type" => $fileType,
                     "size" => filesize("$dir$entry"),
-                    "lastmod" => filemtime("$dir$entry"),
+                    "lastmod" => date("Y-m-d H:i:s" , filemtime("$dir$entry")),
                     "valid_file" => $valid,
                     "filename" => $entry,
                     "extension" => strtolower($extension)
@@ -377,12 +417,16 @@ class Checking {
                     "directory" => "$dir",
                     "type" => $fileType,
                     "size" => filesize("$dir$entry"),
-                    "lastmod" => filemtime("$dir$entry"),
+                    "lastmod" =>date("Y-m-d H:i:s" , filemtime("$dir$entry")),
                     "valid_file" => $valid,
                     "filename" => $entry,
                     "extension" => strtolower($extension)
                 );
+                
+                $filesList = array();
+                $filesList = array("filename" => $entry, "size" => filesize("$dir$entry"), "dir" => $dir );
                 $this->jsonHandler->writeDataToJsonFile($fileInfo, "fileList", $this->generatedReportDirectory, $jsonOutput);
+                $this->jsonHandler->writeDataToJsonFile($filesList, "files", $this->generatedReportDirectory, $jsonOutput);
                
             }
             $pbFL->advance();
