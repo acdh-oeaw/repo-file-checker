@@ -3,6 +3,7 @@
 
 namespace OEAW\Checks;
 
+use setasign\Fpdi;
 use OEAW\Checks\Misc as MC;
 require_once 'Misc.php';
 
@@ -149,25 +150,20 @@ class CheckFunctions {
      */
     public function checkPdfFile(string $file): array{
         
-        $return = array();        
-        $parser = new \Smalot\PdfParser\Parser();
-            
+        $return = array();
+        
         try {
-            if((strpos(fgets(fopen($file, 'r')), "%PDF-1.4") !== false) ){
-                $return = array("errorType" => "PDF_Version_Above_1.4", "filename" => $file, "dir" => $file);
-            }else if (strpos(fgets(fopen($file, 'r')), "%PDF") !== false) {
-                $parser->parseFile($file);
-            }
-
-        }catch(\Exception $e) {
-
-            if (strpos($e->getMessage(), 'Secured pdf file are currently not supported') !== false) {
-                $return = array("errorType" => "Password protected PDF file", "filename" => $file, "dir" => $file);
-            }else {
-                $errMsg = $e->getMessage();
-                $return = array("errorType" => "PDF_Check_Error", "filename" => $file, "dir" => $file, "errorMSG" => $errMsg);
-            }
+            // initiate FPDI
+            $pdf = new Fpdi\Fpdi();
+            // set the source file
+            $pdf->setSourceFile($file);
+            $tplId = $pdf->importPage(1);
+        } catch (\ErrorException $ex) {
+            $return = array("errorType" => "PDF_ERROR", "filename" => $file, "dir" => $file, "errorMSG" => $ex->getMessage());
+        } catch (\Exception $ex) {
+            $return = array("errorType" => "PDF_ERROR", "filename" => $file, "dir" => $file, "errorMSG" => $ex->getMessage());
         }
+        
         
         return $return;    
     }

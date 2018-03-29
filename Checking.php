@@ -7,6 +7,8 @@ use OEAW\Checks\Misc as MC;
 use OEAW\Checks\CheckFunctions as CheckFunctions;
 use OEAW\Checks\JsonHandler as JH;
 use OEAW\Checks\GenerateHTMLOutput as HTML;
+
+
 require_once 'Misc.php';
 require_once 'CheckFunctions.php';
 require_once 'JsonHandler.php';
@@ -15,6 +17,8 @@ require_once 'GenerateHTMLOutput.php';
 
 require __DIR__ . '/vendor/autoload.php';
 require __DIR__ . '/vendor/scholarslab/bagit/lib/bagit.php';
+
+
 
 class Checking {
     
@@ -30,7 +34,6 @@ class Checking {
     private $cfg;
     private $fileTypeArray = array();
     
-
     public function __construct(){
         $this->misc = new MC();
         $this->jsonHandler = new JH();
