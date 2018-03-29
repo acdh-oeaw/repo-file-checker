@@ -18,37 +18,36 @@ require __DIR__ . '/vendor/scholarslab/bagit/lib/bagit.php';
 
 class Checking {
     
-    private $errors = array();
     private $tmpDir;
     private $reportDir;
     private $dirList = array();
-    private $errorList = array();
-    private $fileList = array();
     private $dir;
     private $misc;
     private $jsonHandler;
     private $generatedReportDirectory;
     private $chkFunc;
     private $html;
-
+    private $cfg;
+    private $fileTypeArray = array();
+    
 
     public function __construct(){
         $this->misc = new MC();
         $this->jsonHandler = new JH();
         $this->html = new HTML();
         
-        $cfg = parse_ini_file('config.ini');        
+        $this->cfg = parse_ini_file('config.ini');        
         
         $this->chkFunc = new CheckFunctions();
         
-        if($this->checkTmpDir($cfg['tmpDir'])){
-            $this->tmpDir = $cfg['tmpDir'];
+        if($this->checkTmpDir($this->cfg['tmpDir'])){
+            $this->tmpDir = $this->cfg['tmpDir'];
         }else {
             die();
         }
         
-        if($this->checkReportDir($cfg['reportDir'])){
-            $this->reportDir = $cfg['reportDir'];
+        if($this->checkReportDir($this->cfg['reportDir'])){
+            $this->reportDir = $this->cfg['reportDir'];
             //create the file list html
             $fn = date('Y_m_d_H_i_s');
             mkdir($this->reportDir.'/'.$fn);
@@ -66,14 +65,19 @@ class Checking {
      */
 
     public function startChecking(string $dir, int $output = 0){
-        
+        define('YOUR_EOL', "\n");
         
         $this->dir = $dir;
         $this->getJsonFileList($dir, true, false, $output);
         
-        define('YOUR_EOL', "\n");
+        if(count($this->fileTypeArray) > 0){
+            $this->jsonHandler->writeDataToJsonFile($this->fileTypeArray, "fileTypeList", $this->generatedReportDirectory);
+            if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'fileTypeList') === false){
+                die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'fileTypeList.json');
+            }
+        }
         
-        if($output == 0 || $output == 1 || $output == 2 || $output == 3 ){
+        if($output == 0 || $output == 1 ){
 
             if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'fileList') === false){
                 die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'fileList.json');
@@ -82,7 +86,7 @@ class Checking {
             if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'files') === false){
                 die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'files.json');
             }
-            
+          
             if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'directoryList') === false){
                 die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'directoryList.json');
             }
@@ -134,86 +138,13 @@ class Checking {
                 }
             }
             
-        }
-        
-        
-        if ($output == 1 || $output == 3 ){
-            //create filetype json
-        }
-        
-        
-        if ($output == 2 || $output == 3){
-            //create basic html
-            $this->html->generateFileListHtml($this->generatedReportDirectory);
-            
-            $this->html->generateErrorListHtml($this->generatedReportDirectory);
-            
-            $this->html->generateDirListHtml($this->generatedReportDirectory);
-            
-            
-            if ( $output == 3 ){
-                //create html with filetype
-                
+            if ($output == 1 ){
+                //create basic html
+                $this->html->generateFileListHtml($this->generatedReportDirectory);
+                $this->html->generateErrorListHtml($this->generatedReportDirectory);
+                $this->html->generateDirListHtml($this->generatedReportDirectory);
             }
         }
-       
-    }
-    
-    
-    
-    /**
-     * 
-     * This function creates a json data from the file types
-     * 
-     * @return string
-     */
-    private function generateJsonFileTypeList(): string {
-        
-                
-        $extensionList = array();
-        $directoryList = array();
-        $result = array();
-
-
-        
-        foreach($this->dirList as $d){
-            if(isset($d["extension"])){                
-                $extensionList[$d["extension"]][] = $d;
-            }else{
-                $directoryList[] = $d;
-            }
-        }
-        
-        //sort alphabetically the extension array elements
-        ksort($extensionList, SORT_STRING);
-        
-        $i = 0;
-        foreach($extensionList as $k => $v){
-            $fileSumSize = 0;
-            $fileCount = 0;
-            $min = 0;
-            $max = 0;
-            $size = array_column($v, 'size');
-            $min = min($size);
-            $max = max($size);
-            
-            foreach($v as $val){
-                $fileSumSize += $val["size"];
-                $fileCount += 1;
-            }
-            
-            $avgSize = $fileSumSize / $fileCount;
-
-            $result[$i]['Extension'] = $k;
-            $result[$i]['Count'] = $fileCount;
-            $result[$i]['SumSize'] = $this->misc->formatSizeUnits($fileSumSize);
-            $result[$i]['AvgSize'] = $this->misc->formatSizeUnits($avgSize);
-            $result[$i]['MinSize'] = $this->misc->formatSizeUnits($min);
-            $result[$i]['MaxSize'] = $this->misc->formatSizeUnits($max);
-            
-            $i++;
-        }       
-        return json_encode($result);
     }
     
 
@@ -260,7 +191,7 @@ class Checking {
 
         $retval = array();
         $jsonOutput = "json";
-        if($output == 4){
+        if($output == 2){
             $jsonOutput = "ndjson";    
         }
         // add trailing slash if missing
@@ -275,6 +206,8 @@ class Checking {
         $numOfFiles = count($files)-2;
         $pbFL = new \ProgressBar\Manager(0, $numOfFiles);
         $childrenDir = false;
+        
+        $fileTypeList = array();
         
         while(false !== ($entry = $d->read())) {
             
@@ -367,19 +300,28 @@ class Checking {
                     $extension == "gzip" || $fileType == "application/gzip" ||
                     $extension == "7zip" || $fileType == "application/7zip"
                 ){
-                    $zipResult = $this->chkFunc->checkZipFiles(array("$dir$entry"));
-                    if(count($zipResult) > 0 && isset($zipResult[0])){
-                        $this->jsonHandler->writeDataToJsonFile($zipResult[0], "error", $this->generatedReportDirectory, $jsonOutput);
+                    if(filesize("$dir$entry") > $this->cfg['zipSize'] ){
+                        $this->jsonHandler->writeDataToJsonFile(array("errorType" => "ZIP_Size_Too_Big", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);   
+                    }else{
+                        $zipResult = $this->chkFunc->checkZipFiles(array("$dir$entry"));
+                        if(count($zipResult) > 0 && isset($zipResult[0])){
+                            $this->jsonHandler->writeDataToJsonFile($zipResult[0], "error", $this->generatedReportDirectory, $jsonOutput);
+                        }
                     }
                 }
                 
                 //check the PDF Files
                  if($extension == "pdf" || $fileType == "application/pdf"){
                     //check the zip files and add them to the zip pwd checking
-                    $pdfResult = $this->chkFunc->checkPdfFile("$dir$entry");
-                    if(count($pdfResult) > 0 ){
-                        $this->jsonHandler->writeDataToJsonFile($pdfResult, "error", $this->generatedReportDirectory, $jsonOutput);
+                    if(filesize("$dir$entry") > $this->cfg['pdfSize'] ){
+                        $this->jsonHandler->writeDataToJsonFile(array("errorType" => "PDF_Size_Too_Big", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);   
+                    }else{
+                        $pdfResult = $this->chkFunc->checkPdfFile("$dir$entry");
+                        if(count($pdfResult) > 0 ){
+                            $this->jsonHandler->writeDataToJsonFile($pdfResult, "error", $this->generatedReportDirectory, $jsonOutput);
+                        }
                     }
+                    
                 }
                 //check the RAR files
                 if($extension == "rar" || $fileType == "application/rar"){
@@ -424,13 +366,103 @@ class Checking {
                 );
                 
                 $filesList = array();
-                $filesList = array("filename" => $entry, "size" => filesize("$dir$entry"), "dir" => $dir );
+                $filesList = array("filename" => $entry, "size" => filesize("$dir$entry"), "dir" => $dir, "extension" => strtolower($extension) );
+                
+                $ext = strtolower($extension);
+                $fsize = filesize("$dir$entry");
+                
+                $cleanDir = $this->misc->clean($dir);
+                $cleanFile = $this->misc->clean("$dir$entry");
+                
+                //check that the file is damaged or not
+                if($fsize < 0){
+                    $this->fileTypeArray['info']['damagedFiles'] = array("filename" => "$dir$entry", "dir" => $dir);
+                }else{
+                    //directories
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir][$ext]['sum'])){
+                        $this->fileTypeArray['directories'][$cleanDir][$ext]['sum'] = 0;
+                    }
+                    $this->fileTypeArray['directories'][$cleanDir][$ext]['sum'] += $fsize;
+
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir]['sumSize'])){
+                        $this->fileTypeArray['directories'][$cleanDir]['sumSize'] = 0;
+                    }
+                    $this->fileTypeArray['directories'][$cleanDir]['sumSize'] += $fsize;
+                    
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir]['sumFileCount'])){
+                        $this->fileTypeArray['directories'][$cleanDir]['sumFileCount'] = 0;
+                    }
+                    $this->fileTypeArray['directories'][$cleanDir]['sumFileCount'] += 1;
+                    
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir][$ext]['fileCount'])){
+                        $this->fileTypeArray['directories'][$cleanDir][$ext]['fileCount'] = 0;
+                    }
+                    $this->fileTypeArray['directories'][$cleanDir][$ext]['fileCount'] += 1;
+                    
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir][$ext]['min'])){
+                        $this->fileTypeArray['directories'][$cleanDir][$ext]['min'] = $fsize;
+                    }else{
+                        if($this->fileTypeArray['directories'][$cleanDir][$ext]['min'] > $fsize){
+                            $this->fileTypeArray['directories'][$cleanDir][$ext]['min'] = $fsize;
+                        }
+                    }
+
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir][$ext]['max'])){
+                        $this->fileTypeArray['directories'][$cleanDir][$ext]['max'] = $fsize;
+                    }else{
+                        if($this->fileTypeArray['directories'][$cleanDir][$ext]['max'] < $fsize){
+                            $this->fileTypeArray['directories'][$cleanDir][$ext]['max'] = $fsize;
+                        }
+                    }
+                    
+                    // extensions
+                    if(!isset($this->fileTypeArray['extensions'][$ext]['sumSize'])){
+                        $this->fileTypeArray['extensions'][$ext]['sumSize'] = 0;
+                    }                    
+                    $this->fileTypeArray['extensions'][$ext]['sumSize'] += $fsize;
+                    
+                    if(!isset($this->fileTypeArray['extensions'][$ext]['fileCount'])){
+                        $this->fileTypeArray['extensions'][$ext]['fileCount'] = 0;
+                    }
+                    $this->fileTypeArray['extensions'][$ext]['fileCount'] += 1;
+                    
+                    if(!isset($this->fileTypeArray['extensions'][$ext]['min'])){
+                        $this->fileTypeArray['extensions'][$ext]['min'] = $fsize;
+                    }else{
+                        if($this->fileTypeArray['extensions'][$ext]['min'] > $fsize){
+                            $this->fileTypeArray['extensions'][$ext]['min'] = $fsize;
+                        }
+                    }
+
+                    if(!isset($this->fileTypeArray['extensions'][$ext]['max'])){
+                        $this->fileTypeArray['extensions'][$ext]['max'] = $fsize;
+                    }else{
+                        if($this->fileTypeArray['extensions'][$ext]['max'] < $fsize){
+                            $this->fileTypeArray['extensions'][$ext]['max'] = $fsize;
+                        }
+                    }
+                    
+                    
+                    //summary
+                    if(!isset($this->fileTypeArray['summary']['overallFileCount'])){
+                        $this->fileTypeArray['summary']['overallFileCount'] = 0;
+                    }
+                    $this->fileTypeArray['summary']['overallFileCount'] += 1;
+
+                    if(!isset($this->fileTypeArray['summary']['overallFileSize'])){
+                        $this->fileTypeArray['summary']['overallFileSize'] = 0;
+                    }
+                    $this->fileTypeArray['summary']['overallFileSize'] += $fsize;
+                    
+                }
+                
                 $this->jsonHandler->writeDataToJsonFile($fileInfo, "fileList", $this->generatedReportDirectory, $jsonOutput);
                 $this->jsonHandler->writeDataToJsonFile($filesList, "files", $this->generatedReportDirectory, $jsonOutput);
                
             }
             $pbFL->advance();
             echo "\n";
+           
             
         }
                

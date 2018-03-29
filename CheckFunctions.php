@@ -179,7 +179,7 @@ class CheckFunctions {
      * @param array $data
      * @return type
      */
-    function makeUnique(array $data)
+    public function makeUnique(array $data)
     {
         $serialized = array_map(create_function('$a', 'return $a;'), $data);
         $unique = array_unique($serialized);
@@ -187,7 +187,6 @@ class CheckFunctions {
         return array_intersect_key($unique, $data);
     }
     
-   
     /**
      * 
      *  Check the file and/or size duplications

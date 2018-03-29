@@ -52,8 +52,6 @@ class GenerateHTMLOutput {
      * @return boolean
      */
     public function generateFileListHtml(string $directory): bool {
-              
-        $dirFileSizes = array();        
         
         $fileList = "";
         $fileList = '<div class="card" id="filelist">
@@ -81,7 +79,6 @@ class GenerateHTMLOutput {
         
         return true;
     }
-    
     
      public function generateDirListHtml(string $directory): bool {
         

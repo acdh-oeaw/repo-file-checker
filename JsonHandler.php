@@ -58,15 +58,14 @@ class JsonHandler {
      */
     public function closeJsonFiles(string $reportDir, string $type): bool{
         
-        if($type == "duplicates"){
-            $pos = -1;
-        }else {
-            $pos = -2;
-        }
-        
         if(file_exists($reportDir.'/'.$type.'.json') === false){
              return false;
         }else {
+            $pos = -2;
+            $no_of_lines = count(file($reportDir.'/'.$type.'.json')); 
+            if($no_of_lines < 2){
+                $pos = -1;
+            }
             //open just the last line and do not load all file to the memory
             $line = "";
             $fp = fopen($reportDir.'/'.$type.'.json', 'r+');
@@ -140,8 +139,6 @@ class JsonHandler {
         $result = str_replace("\\/", "/", $result);
         $result = str_replace("\\", "/", $result);
         $result = str_replace("//", "/", $result);
-        
-        
         
         if($output == "ndjson"){
             $index_directive = "{\"index\":{}}" ;
