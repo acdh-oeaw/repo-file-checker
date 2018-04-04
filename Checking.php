@@ -98,7 +98,7 @@ class Checking {
                 die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'error.json');
             }
             
-            $duplicates = array();
+            
             $buffer = "";
             $handle = fopen($this->generatedReportDirectory.'/'.'files.json', "r");
             if ($handle) {
@@ -108,13 +108,17 @@ class Checking {
                 fclose($handle);
             }
             
+            $duplicates = array();
+            
             if(!empty($buffer)){
                 $arr = array();
                 $arr = json_decode($buffer, true);
-                $duplicates = $this->chkFunc->checkFileDuplications($arr['data']);
+                if(is_array($arr['data'])){
+                    $duplicates = $this->chkFunc->checkFileDuplications($arr['data']);
+                }
             }
           
-            if(count($duplicates) > 0){
+            if(count($duplicates) > 0){ 
                 
                 if( isset($duplicates["Duplicate_File_And_Size"]) && count($duplicates["Duplicate_File_And_Size"]) > 0){
                     foreach( $duplicates["Duplicate_File_And_Size"] as $k => $v){

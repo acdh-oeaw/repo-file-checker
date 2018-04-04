@@ -59,7 +59,7 @@ class JsonHandler {
     public function closeJsonFiles(string $reportDir, string $type): bool{
         
         if(file_exists($reportDir.'/'.$type.'.json') === false){
-             return false;
+             return true;
         }else {
             $pos = -2;
             $no_of_lines = count(file($reportDir.'/'.$type.'.json')); 
