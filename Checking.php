@@ -232,7 +232,7 @@ class Checking {
                                 
                 //check the file name validity
                 $valid = $this->chkFunc->checkDirectoryNameValidity("$dir$entry");
-                if($valid === false){
+                if($valid === false && !empty("$dir$entry")){
                     $this->jsonHandler->writeDataToJsonFile( array("errorType" => "Directory_Not_Valid" ,"dir" => "$dir$entry", "filename" => ""), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
@@ -250,7 +250,9 @@ class Checking {
                 if(filetype("$dir$entry") == "dir"){
                     $dirData = array();
                     $dirData = array("name" => "$dir$entry", "valid" => $valid,  "lastmodified" => date("Y-m-d H:i:s" , filemtime("$dir$entry")));
-                    $this->jsonHandler->writeDataToJsonFile($dirData, "directoryList", $this->generatedReportDirectory, $jsonOutput);
+                    if(count($dirData) > 0){
+                        $this->jsonHandler->writeDataToJsonFile($dirData, "directoryList", $this->generatedReportDirectory, $jsonOutput);
+                    }
                 }  
                 
                 
@@ -285,19 +287,19 @@ class Checking {
                     $fileType = finfo_file($finfo, "$dir$entry");
                 }
                 //blacklist files
-                if($this->chkFunc->checkBlackListFile($extension) == true){
+                if($this->chkFunc->checkBlackListFile($extension) == true && !empty($dir) && !empty($entry)){
                     $this->jsonHandler->writeDataToJsonFile(array("errorType" => "File_Blacklisted", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
                 //check the file name validity
                 $valid = $this->chkFunc->checkFileNameValidity($entry);
-                if($valid === false){
+                if($valid === false && !empty($dir) && !empty($entry) ){
                     $this->jsonHandler->writeDataToJsonFile(array("errorType" => "File_Not_Valid", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
                 //check the mime extensions
                 $mime = $this->chkFunc->checkMimeTypes($extension, $fileType);
-                if($mime === false){
+                if($mime === false && !empty($dir) && !empty($entry) ){
                     $this->jsonHandler->writeDataToJsonFile(array("errorType" => "Mime_Type_Error", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
@@ -462,10 +464,12 @@ class Checking {
                     $this->fileTypeArray['summary']['overallFileSize'] += $fsize;
                     
                 }
-                
-                $this->jsonHandler->writeDataToJsonFile($fileInfo, "fileList", $this->generatedReportDirectory, $jsonOutput);
-                $this->jsonHandler->writeDataToJsonFile($filesList, "files", $this->generatedReportDirectory, $jsonOutput);
-               
+                if(count($fileInfo) > 0){
+                    $this->jsonHandler->writeDataToJsonFile($fileInfo, "fileList", $this->generatedReportDirectory, $jsonOutput);
+                }
+                if(count($filesList) > 0){
+                    $this->jsonHandler->writeDataToJsonFile($filesList, "files", $this->generatedReportDirectory, $jsonOutput);
+                }
             }
             $pbFL->advance();
             echo "\n";
