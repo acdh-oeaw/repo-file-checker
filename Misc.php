@@ -253,7 +253,7 @@ class Misc {
             'owl'       =>      array('application/xml'),
             'xsl'       =>      array('text/html'),
             'xsd'       =>      array('application/xml'),
-            'rdf'       =>      array('application/xml'),
+            'rdf'       =>      array('application/rdf+xml'),
         );
         
     }
