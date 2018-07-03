@@ -54,6 +54,8 @@ class Checking {
             //create the file list html
             $fn = date('Y_m_d_H_i_s');
             mkdir($this->reportDir.'/'.$fn);
+            mkdir($this->reportDir.'/'.$fn.'/js');
+            mkdir($this->reportDir.'/'.$fn.'/css');
             $this->generatedReportDirectory = $this->reportDir.'/'.$fn;
         }else {
             die();
@@ -150,6 +152,23 @@ class Checking {
                 $this->html->generateFileListHtml($this->generatedReportDirectory);
                 $this->html->generateErrorListHtml($this->generatedReportDirectory);
                 $this->html->generateDirListHtml($this->generatedReportDirectory);
+                
+                $file = fopen($this->generatedReportDirectory.'/fileTypeList.json', 'r');
+                $content = stream_get_contents($file);
+                $obj = json_decode($content, true);
+                $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
+                if(count($result) > 0){
+                    $dirDataFile = fopen($this->generatedReportDirectory.'/directories.json', 'w');
+                    fwrite($dirDataFile, json_encode($result));
+                    fclose($dirDataFile);
+                }
+                $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
+                if(count($resultExt) > 0){
+                    $dirDataFile = fopen($this->generatedReportDirectory.'/extensions.json', 'w');
+                    fwrite($dirDataFile, json_encode($resultExt));
+                    fclose($dirDataFile);
+                }
+                $this->html->generateFileTypeListHtml($this->generatedReportDirectory);
             }
         }
     }
@@ -388,39 +407,39 @@ class Checking {
                     $this->fileTypeArray['info']['damagedFiles'] = array("filename" => "$dir$entry", "dir" => $dir);
                 }else{
                     //directories
-                    if(!isset($this->fileTypeArray['directories'][$cleanDir][$ext]['sum'])){
-                        $this->fileTypeArray['directories'][$cleanDir][$ext]['sum'] = 0;
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['sumSize']['sum'])){
+                        $this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['sumSize']['sum'] = 0;
                     }
-                    $this->fileTypeArray['directories'][$cleanDir][$ext]['sum'] += $fsize;
+                    $this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['sumSize']['sum'] += $fsize;
 
-                    if(!isset($this->fileTypeArray['directories'][$cleanDir]['sumSize'])){
-                        $this->fileTypeArray['directories'][$cleanDir]['sumSize'] = 0;
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir]['dirSumSize']['sumSize'])){
+                        $this->fileTypeArray['directories'][$cleanDir]['dirSumSize']['sumSize'] = 0;
                     }
-                    $this->fileTypeArray['directories'][$cleanDir]['sumSize'] += $fsize;
+                    $this->fileTypeArray['directories'][$cleanDir]['dirSumSize']['sumSize'] += $fsize;
                     
-                    if(!isset($this->fileTypeArray['directories'][$cleanDir]['sumFileCount'])){
-                        $this->fileTypeArray['directories'][$cleanDir]['sumFileCount'] = 0;
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir]['dirSumFiles']['sumFileCount'])){
+                        $this->fileTypeArray['directories'][$cleanDir]['dirSumFiles']['sumFileCount'] = 0;
                     }
-                    $this->fileTypeArray['directories'][$cleanDir]['sumFileCount'] += 1;
+                    $this->fileTypeArray['directories'][$cleanDir]['dirSumFiles']['sumFileCount'] += 1;
                     
-                    if(!isset($this->fileTypeArray['directories'][$cleanDir][$ext]['fileCount'])){
-                        $this->fileTypeArray['directories'][$cleanDir][$ext]['fileCount'] = 0;
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['fileCount']['fileCount'])){
+                        $this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['fileCount']['fileCount'] = 0;
                     }
-                    $this->fileTypeArray['directories'][$cleanDir][$ext]['fileCount'] += 1;
+                    $this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['fileCount']['fileCount'] += 1;
                     
-                    if(!isset($this->fileTypeArray['directories'][$cleanDir][$ext]['min'])){
-                        $this->fileTypeArray['directories'][$cleanDir][$ext]['min'] = $fsize;
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['minSize']['min'])){
+                        $this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['minSize']['min'] = $fsize;
                     }else{
-                        if($this->fileTypeArray['directories'][$cleanDir][$ext]['min'] > $fsize){
-                            $this->fileTypeArray['directories'][$cleanDir][$ext]['min'] = $fsize;
+                        if($this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['minSize']['min'] > $fsize){
+                            $this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['minSize']['min'] = $fsize;
                         }
                     }
 
-                    if(!isset($this->fileTypeArray['directories'][$cleanDir][$ext]['max'])){
-                        $this->fileTypeArray['directories'][$cleanDir][$ext]['max'] = $fsize;
+                    if(!isset($this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['maxSize']['max'])){
+                        $this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['maxSize']['max'] = $fsize;
                     }else{
-                        if($this->fileTypeArray['directories'][$cleanDir][$ext]['max'] < $fsize){
-                            $this->fileTypeArray['directories'][$cleanDir][$ext]['max'] = $fsize;
+                        if($this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['maxSize']['max'] < $fsize){
+                            $this->fileTypeArray['directories'][$cleanDir]['extension'][$ext]['maxSize']['max'] = $fsize;
                         }
                     }
                     

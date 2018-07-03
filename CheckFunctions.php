@@ -241,11 +241,11 @@ class CheckFunctions {
             
         $za = new \ZipArchive();
         //open and extract the zip files
-        //$pbZip = new \ProgressBar\Manager(0, count($zipFiles));
+        $pbZip = new \ProgressBar\Manager(0, count($zipFiles));
         
         
         foreach($zipFiles as $f){
-           // $pbZip->advance();
+            $pbZip->advance();
             if ($za->open($f, \ZIPARCHIVE::CREATE) !== TRUE) {
                 $result[] = array("errorType" => "Zip_Open_Error", "filename" => $f, "dir" => $f);
             }else {
@@ -265,6 +265,102 @@ class CheckFunctions {
         }
         return $result;
     }
+    
+    /**
+     * 
+     * 
+     * Generate the data to for the directory tree view
+     * based on the filetypelist.json
+     * 
+     * @param array $flat
+     * @return array
+     */
+    public function convertDirectoriesToTree(array $flat): array {
+        
+        $indexed = array();
+        $arrKeys = array_keys($flat);
+        for ($x = 0; $x <= count($flat) - 1; $x++) {
+            $indexed[$x]['text'] = $arrKeys[$x];
+            
+            if(isset($flat[$arrKeys[$x]]['extension'])){
+                
+                if(count($flat[$arrKeys[$x]]['extension']) > 0){
+                    $i = 0;
+                    $children = array();
+                    foreach($flat[$arrKeys[$x]]['extension'] as $k => $v){
+                        
+                        $children[$i]['text'] = $k;
+                        if(isset($v["sumSize"])){
+                            $children[$i]['children'][] = array("icon" => "jstree-file", "text" => "SumSize: ".$this->misc->formatSizeUnits($v["sumSize"]['sum']));
+                        }
+                        if(isset($v["fileCount"])){
+                            $children[$i]['children'][] =array("icon" => "jstree-file", "text" => "fileCount: ".$v["fileCount"]['fileCount']." file(s)");
+                        }
+                        if(isset($v["minSize"])){
+                            $children[$i]['children'][] = array("icon" => "jstree-file", "text" => "MinSize: ".$this->misc->formatSizeUnits($v["minSize"]['min']));
+                        }
+                        if(isset($v["maxSize"])){
+                            $children[$i]['children'][] = array("icon" => "jstree-file", "text" => "MaxSize: ".$this->misc->formatSizeUnits($v["maxSize"]['max']));
+                        }
+                        $i++;
+                    }
+                    
+                    $indexed[$x]['children'] = $children;
+                }
+                
+                
+            }
+            if(isset($flat[$arrKeys[$x]]['dirSumSize'])){
+                $indexed[$x]['children'][] = array("icon" => "jstree-file", "text" => "dirSumSize: ".$this->misc->formatSizeUnits($flat[$arrKeys[$x]]['dirSumSize']['sumSize']));
+            }
+            if(isset($flat[$arrKeys[$x]]['dirSumFiles'])){
+                $indexed[$x]['children'][] = array("icon" => "jstree-file", "text" => "dirSumFiles: ".$this->misc->formatSizeUnits($flat[$arrKeys[$x]]['dirSumFiles']['sumFileCount']));
+            }
+        }
+        return $indexed;
+    }
+    
+    /**
+     * 
+     * Generate the data to for the extension tree view
+     * based on the filetypelist.json
+     * 
+     * @param array $flat
+     * @return array
+     */
+    public function convertExtensionsToTree(array $flat): array {
+        
+        $indexed = array();
+        $arrKeys = array_keys($flat);
+        for ($x = 0; $x <= count($flat) - 1; $x++) {
+            $indexed[$x]['text'] = $arrKeys[$x];
+            $i = 0;
+            $children = array();
+            foreach($flat[$arrKeys[$x]] as $k => $v){
+                //$children[$i] = ['text'] = $k;
+                
+                if($k == "sumSize"){
+                    $children[$i] = array("icon" => "jstree-file", "text" => "SumSize: ".$this->misc->formatSizeUnits($v));
+                }
+                if( $k == "fileCount"){
+                    $children[$i] = array("icon" => "jstree-file", "text" => "fileCount: ".$v." file(s)");
+                }
+                if( $k == "min"){
+                    $children[$i] = array("icon" => "jstree-file", "text" => "MinSize: ".$this->misc->formatSizeUnits($v));
+                }
+                if($k == "max"){
+                    $children[$i] = array("icon" => "jstree-file", "text" => "MaxSize: ".$this->misc->formatSizeUnits($v));
+                }
+                $i++;
+            }
+
+            $indexed[$x]['children'] = $children;
+            
+        }
+        return $indexed;
+    }
+
+    
     
     
     

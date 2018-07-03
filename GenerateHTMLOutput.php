@@ -115,10 +115,15 @@ class GenerateHTMLOutput {
         if(empty($string) || empty($directory) || empty($filename)){
             die("writeDataToHtmlFile -> missing data");
         }
-        copy('template/style.css', $directory.'/style.css');
-        copy('template/jquery.js', $directory.'/jquery.js');
-        copy('template/jquery.dataTables.css', $directory.'/jquery.dataTables.css');
-        copy('template/jquery.dataTables.js', $directory.'/jquery.dataTables.js');
+        copy('template/css/style.css', $directory.'/css/style.css');
+        copy('template/js/jquery.js', $directory.'/js/jquery.js');
+        copy('template/js/jstree.min.js', $directory.'/js/jstree.min.js');        
+        copy('template/css/jquery.dataTables.css', $directory.'/css/jquery.dataTables.css');
+        copy('template/js/jquery.dataTables.js', $directory.'/js/jquery.dataTables.js');
+        copy('template/css/jstreecss.css', $directory.'/css/jstreecss.css');
+        copy('template/css/throbber.gif', $directory.'/css/throbber.gif');
+        copy('template/css/40px.png', $directory.'/css/40px.png');
+        copy('template/css/32px.png', $directory.'/css/32px.png');
 
         $template=file_get_contents('template/template.html');
         $tpl=str_replace("{html_file_content}", $string,$template);
@@ -133,11 +138,40 @@ class GenerateHTMLOutput {
      * 
      * @return string
      */
-    private function generateFileTypeList(): string {
-        if(empty($this->dirList)){
-            echo "ERROR genereateFileTypeList function has no data \n\n".$f;            
-            return false;
-        }
+    public function generateFileTypeListHtml(string $directory): string {
+        
+        $fileList = "";
+        
+        $fileList = '<div class="card" id="fileTypeList">
+                        <div class="header">
+                            <h4 class="title">File Types By Directory</h4>
+                        </div>
+                    <div class="content table-responsive table-full-width" >
+                    <div class="container-fluid">';
+        $fileList .= ' <input type="text" value="" style="box-shadow:inset 0 0 4px #eee; width:200px; margin:0; padding:6px 12px; border-radius:4px; border:1px solid silver; font-size:1.1em;" id="directories_q" placeholder="Search" />
+                        <div id="data" class="demo"></div>';
+        $fileList .= "</div>\n\n";
+        $fileList .= "</div>\n\n";
+        $fileList .= "</div>\n\n";
+        
+        $fileList .= '<div class="card" id="fileTypeList">
+                        <div class="header">
+                            <h4 class="title">File Types By Extensions</h4>
+                        </div>
+                    <div class="content table-responsive table-full-width" >
+                    <div class="container-fluid">';
+        
+        $fileList .= ' <input type="text" value="" style="box-shadow:inset 0 0 4px #eee; width:200px; margin:0; padding:6px 12px; border-radius:4px; border:1px solid silver; font-size:1.1em;" id="extensions_q" placeholder="Search" />
+                        <div id="ext_data" class="demo"></div>';
+        $fileList .= "</div>\n\n";
+        $fileList .= "</div>\n\n";
+        $fileList .= "</div>\n\n";
+        
+        $this->writeDataToHtmlFile($fileList, $directory, "fileTypeList");
+        
+        return true;
+        
+        
                 
         $extensionList = array();
         $directoryList = array();
