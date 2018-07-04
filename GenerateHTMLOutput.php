@@ -68,6 +68,7 @@ class GenerateHTMLOutput {
                 <th><b>Extension</b></th>
                 <th><b>Type</b></th>
                 <th><b>Size</b></th>
+                <th><b>Last Modif.</b></th>
                 <th><b>Valid</b></th>
                 </tr>\n";
         $fileList .= "</thead>\n";

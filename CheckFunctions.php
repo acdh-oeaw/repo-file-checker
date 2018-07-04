@@ -159,9 +159,9 @@ class CheckFunctions {
             $pdf->setSourceFile($file);
             $tplId = $pdf->importPage(1);
         } catch (\ErrorException $ex) {
-            $return = array("errorType" => "PDF_ERROR", "filename" => $file, "dir" => $file, "errorMSG" => $ex->getMessage());
+            $return = array("errorType" => "The PDF file is password protected", "filename" => $file, "dir" => $file, "errorMSG" => $ex->getMessage());
         } catch (\Exception $ex) {
-            $return = array("errorType" => "PDF_ERROR", "filename" => $file, "dir" => $file, "errorMSG" => $ex->getMessage());
+            $return = array("errorType" => "The PDF file is password protected", "filename" => $file, "dir" => $file, "errorMSG" => $ex->getMessage());
         }
         return $return;    
     }

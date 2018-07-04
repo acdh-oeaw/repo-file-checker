@@ -11,6 +11,7 @@
 	<script type="text/javascript" language="javascript" src="js/jquery.js"></script>
         <script type="text/javascript" language="javascript" src="js/jstree.min.js"></script>
 	<script type="text/javascript" language="javascript" src="js/jquery.dataTables.js"></script>	
+        <script type="text/javascript" language="javascript" src="js/helper.js"></script>
         <link rel="stylesheet" href="css/jstreecss.css" />
 	<script type="text/javascript" language="javascript" class="init">
 		$(document).ready(function() {
@@ -34,8 +35,12 @@
                             { "data": "extension" },
                             { "data": "type" },
                             { "data": "size" },
+                            { "data": "lastmod" },
                             { "data": "valid_file" }
-                        ]
+                        ],
+                        "createdRow": function ( row, data, index ) {
+                            $('td', row).eq(4).text(humanFileSize(data.size));
+                        }
                     } );
                     $('#errorsDT').DataTable( {
                         "ajax": "error.json",

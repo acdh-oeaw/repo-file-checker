@@ -129,7 +129,7 @@ class Checking {
                             $dirs = implode(",", $v);
                         }else { $dirs = $v; }
                         $this->jsonHandler->writeDataToJsonFile( 
-                                array("errorType" => "Duplicate_File_And_Size" ,"dir" => "$dirs", "filename" => "$k"), 
+                                array("errorType" => "DUPLICATION! There is a file with same name and size!" ,"dir" => "$dirs", "filename" => "$k"), 
                                 "error", 
                                 $this->generatedReportDirectory, 
                                 "json"
@@ -150,7 +150,7 @@ class Checking {
                             $dirs = implode(",", $v);
                         }else { $dirs = $v; }
                         $this->jsonHandler->writeDataToJsonFile( 
-                                array("errorType" => "Duplicate_File" ,"dir" => "$dirs", "filename" => "$k"), 
+                                array("errorType" => "DUPLICATION! There is a file with same name!" ,"dir" => "$dirs", "filename" => "$k"), 
                                 "error", 
                                 $this->generatedReportDirectory, 
                                 "json"
@@ -273,7 +273,7 @@ class Checking {
                 //check the file name validity
                 $valid = $this->chkFunc->checkDirectoryNameValidity("$dir$entry");
                 if($valid === false && !empty("$dir$entry")){
-                    $this->jsonHandler->writeDataToJsonFile( array("errorType" => "Directory_Not_Valid" ,"dir" => "$dir$entry", "filename" => ""), "error", $this->generatedReportDirectory, $jsonOutput);
+                    $this->jsonHandler->writeDataToJsonFile( array("errorType" => "Directory name contains invalid characters" ,"dir" => "$dir$entry", "filename" => ""), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
                 $retval[] = array(
@@ -328,19 +328,19 @@ class Checking {
                 }
                 //blacklist files
                 if($this->chkFunc->checkBlackListFile($extension) == true && !empty($dir) && !empty($entry)){
-                    $this->jsonHandler->writeDataToJsonFile(array("errorType" => "File_Blacklisted", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
+                    $this->jsonHandler->writeDataToJsonFile(array("errorType" => "This file extension is blacklisted", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
                 //check the file name validity
                 $valid = $this->chkFunc->checkFileNameValidity($entry);
                 if($valid === false && !empty($dir) && !empty($entry) ){
-                    $this->jsonHandler->writeDataToJsonFile(array("errorType" => "File_Not_Valid", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
+                    $this->jsonHandler->writeDataToJsonFile(array("errorType" => "File name contains invalid characters", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
                 //check the mime extensions
                 $mime = $this->chkFunc->checkMimeTypes($extension, $fileType);
                 if($mime === false && !empty($dir) && !empty($entry) ){
-                    $this->jsonHandler->writeDataToJsonFile(array("errorType" => "Mime_Type_Error", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
+                    $this->jsonHandler->writeDataToJsonFile(array("errorType" => "MIME type does not match format extension", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
                 //check the ZIP files
@@ -350,7 +350,7 @@ class Checking {
                     $extension == "7zip" || $fileType == "application/7zip"
                 ){
                     if(filesize("$dir$entry") > $this->cfg['zipSize'] ){
-                        $this->jsonHandler->writeDataToJsonFile(array("errorType" => "ZIP_Size_Too_Big", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);   
+                        $this->jsonHandler->writeDataToJsonFile(array("errorType" => "The ZIP was skipped, because it is too large", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);   
                     }else{
                         $zipResult = $this->chkFunc->checkZipFiles(array("$dir$entry"));
                         if(count($zipResult) > 0 && isset($zipResult[0])){
@@ -363,7 +363,7 @@ class Checking {
                  if($extension == "pdf" || $fileType == "application/pdf"){
                     //check the zip files and add them to the zip pwd checking
                     if(filesize("$dir$entry") > $this->cfg['pdfSize'] ){
-                        $this->jsonHandler->writeDataToJsonFile(array("errorType" => "PDF_Size_Too_Big", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);   
+                        $this->jsonHandler->writeDataToJsonFile(array("errorType" => "The PDF was skipped, because it is too large", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);   
                     }else{
                         $pdfResult = $this->chkFunc->checkPdfFile("$dir$entry");
                         if(count($pdfResult) > 0 ){
@@ -374,12 +374,12 @@ class Checking {
                 }
                 //check the RAR files
                 if($extension == "rar" || $fileType == "application/rar"){
-                    $this->jsonHandler->writeDataToJsonFile(array("errorType" => "RAR_File_Check_it_manually", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
+                    $this->jsonHandler->writeDataToJsonFile(array("errorType" => "This is a RAR file! Please check it manually!", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
                 //check PW protected XLSX, DOCX
                 if(($extension == "xlsx" || $extension == "docx") && $fileType == "application/CDFV2-encrypted"){
-                    $this->jsonHandler->writeDataToJsonFile(array("errorType" => "XLSX_DOCX_With_Password", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
+                    $this->jsonHandler->writeDataToJsonFile(array("errorType" => "This document (XLSX,DOCX) is password protected", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);
                 }
                 
                 //check the bagit files
@@ -387,7 +387,7 @@ class Checking {
                     $bagItResult = array();
                     $bagItResult = $this->chkFunc->checkBagitFile("$dir$entry");
                     if(count($bagItResult) > 0){
-                        $this->jsonHandler->writeDataToJsonFile(array("errorType" =>"Bagit_Error", "dir" => $dir, "filename" => $entry, "errorMSG" => $bagItResult), "error", $this->generatedReportDirectory, $jsonOutput);
+                        $this->jsonHandler->writeDataToJsonFile(array("errorType" =>" BagIt file is not valid or can not be analysed", "dir" => $dir, "filename" => $entry, "errorMSG" => $bagItResult), "error", $this->generatedReportDirectory, $jsonOutput);
                     }
                 }
                 
