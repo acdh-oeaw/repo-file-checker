@@ -96,9 +96,6 @@ class Checking {
                 die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'directoryList.json');
             }
             
-            if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'error') === false){
-                die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'error.json');
-            }
             
             
             $buffer = "";
@@ -119,14 +116,24 @@ class Checking {
                     $duplicates = $this->chkFunc->checkFileDuplications($arr['data']);
                 }
             }
-          
+           
             if(count($duplicates) > 0){ 
                 
                 if( isset($duplicates["Duplicate_File_And_Size"]) && count($duplicates["Duplicate_File_And_Size"]) > 0){
                     foreach( $duplicates["Duplicate_File_And_Size"] as $k => $v){
                         $arr = array();
                         $arr[$k] = $v;
+                        
                         $this->jsonHandler->writeDataToJsonFile( $arr, "duplicates_size", $this->generatedReportDirectory, "json");
+                        if(is_array($v)){
+                            $dirs = implode(",", $v);
+                        }else { $dirs = $v; }
+                        $this->jsonHandler->writeDataToJsonFile( 
+                                array("errorType" => "Duplicate_File_And_Size" ,"dir" => "$dirs", "filename" => "$k"), 
+                                "error", 
+                                $this->generatedReportDirectory, 
+                                "json"
+                            );
                     }
                     
                     if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'duplicates_size') === false){
@@ -139,6 +146,15 @@ class Checking {
                         $arr = array();
                         $arr[$k] = $v;
                         $this->jsonHandler->writeDataToJsonFile( $arr, "duplicates", $this->generatedReportDirectory, "json");
+                        if(is_array($v)){
+                            $dirs = implode(",", $v);
+                        }else { $dirs = $v; }
+                        $this->jsonHandler->writeDataToJsonFile( 
+                                array("errorType" => "Duplicate_File" ,"dir" => "$dirs", "filename" => "$k"), 
+                                "error", 
+                                $this->generatedReportDirectory, 
+                                "json"
+                            );
                     }
                     
                     if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'duplicates') === false){
@@ -146,6 +162,11 @@ class Checking {
                     }
                 }
             }
+            
+            if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'error') === false){
+                die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'error.json');
+            }
+            
             
             if ($output == 1 ){
                 //create basic html

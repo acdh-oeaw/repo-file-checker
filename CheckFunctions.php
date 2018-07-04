@@ -163,8 +163,6 @@ class CheckFunctions {
         } catch (\Exception $ex) {
             $return = array("errorType" => "PDF_ERROR", "filename" => $file, "dir" => $file, "errorMSG" => $ex->getMessage());
         }
-        
-        
         return $return;    
     }
     
@@ -221,7 +219,7 @@ class CheckFunctions {
                 $return['Duplicate_File'][$k] = array_values($return['Duplicate_File'][$k]);
             }
         }
-        
+       
         return $return;
     }
     
