@@ -121,6 +121,7 @@ class GenerateHTMLOutput {
         copy('template/js/jstree.min.js', $directory.'/js/jstree.min.js');        
         copy('template/css/jquery.dataTables.css', $directory.'/css/jquery.dataTables.css');
         copy('template/js/jquery.dataTables.js', $directory.'/js/jquery.dataTables.js');
+        copy('template/js/helper.js', $directory.'/js/helper.js');
         copy('template/css/jstreecss.css', $directory.'/css/jstreecss.css');
         copy('template/css/throbber.gif', $directory.'/css/throbber.gif');
         copy('template/css/40px.png', $directory.'/css/40px.png');
