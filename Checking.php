@@ -349,7 +349,7 @@ class Checking {
                     $extension == "gzip" || $fileType == "application/gzip" ||
                     $extension == "7zip" || $fileType == "application/7zip"
                 ){
-                    if(filesize("$dir$entry") > $this->cfg['zipSize'] ){
+                    if($this->chkFunc->real_filesize("$dir$entry") > $this->cfg['zipSize'] ){
                         $this->jsonHandler->writeDataToJsonFile(array("errorType" => "The ZIP was skipped, because it is too large", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);   
                     }else{
                         $zipResult = $this->chkFunc->checkZipFiles(array("$dir$entry"));
@@ -362,7 +362,7 @@ class Checking {
                 //check the PDF Files
                  if($extension == "pdf" || $fileType == "application/pdf"){
                     //check the zip files and add them to the zip pwd checking
-                    if(filesize("$dir$entry") > $this->cfg['pdfSize'] ){
+                    if($this->chkFunc->real_filesize("$dir$entry") > $this->cfg['pdfSize'] ){
                         $this->jsonHandler->writeDataToJsonFile(array("errorType" => "The PDF was skipped, because it is too large", "dir" => $dir, "filename" => $entry), "error", $this->generatedReportDirectory, $jsonOutput);   
                     }else{
                         $pdfResult = $this->chkFunc->checkPdfFile("$dir$entry");
@@ -395,7 +395,7 @@ class Checking {
                     "name" => "$dir$entry",
                     "directory" => "$dir",
                     "type" => $fileType,
-                    "size" => filesize("$dir$entry"),
+                    "size" => $this->chkFunc->real_filesize("$dir$entry"),
                     "lastmod" => date("Y-m-d H:i:s" , filemtime("$dir$entry")),
                     "valid_file" => $valid,
                     "filename" => $entry,
@@ -407,7 +407,7 @@ class Checking {
                     "name" => "$dir$entry",
                     "directory" => "$dir",
                     "type" => $fileType,
-                    "size" => filesize("$dir$entry"),
+                    "size" => $this->chkFunc->real_filesize("$dir$entry"),
                     "lastmod" =>date("Y-m-d H:i:s" , filemtime("$dir$entry")),
                     "valid_file" => $valid,
                     "filename" => $entry,
@@ -415,10 +415,10 @@ class Checking {
                 );
                 
                 $filesList = array();
-                $filesList = array("filename" => $entry, "size" => filesize("$dir$entry"), "dir" => $dir, "extension" => strtolower($extension) );
+                $filesList = array("filename" => $entry, "size" => $this->chkFunc->real_filesize("$dir$entry"), "dir" => $dir, "extension" => strtolower($extension) );
                 
                 $ext = strtolower($extension);
-                $fsize = filesize("$dir$entry");
+                $fsize = $this->chkFunc->real_filesize("$dir$entry");
                 
                 $cleanDir = $this->misc->clean($dir);
                 $cleanFile = $this->misc->clean("$dir$entry");

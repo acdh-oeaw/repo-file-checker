@@ -224,6 +224,12 @@ class CheckFunctions {
     }
     
     
+    function real_filesize($file_path)
+    {
+        $fs = new \COM("Scripting.FileSystemObject");
+        return $fs->GetFile($file_path)->Size;
+    }
+
     /**
      * 
      * check the zip files, we extract them to know if it is pwd protected or not
