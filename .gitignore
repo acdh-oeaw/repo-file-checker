@@ -1,1 +1,6 @@
 phpMussel\vault\config.ini
+/composer.lock
+/vendor
+/temp
+/config.ini
+/reports
