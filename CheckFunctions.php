@@ -226,8 +226,24 @@ class CheckFunctions {
     
     function real_filesize($file_path)
     {
-        $fs = new \COM("Scripting.FileSystemObject");
-        return $fs->GetFile($file_path)->Size;
+        $size = 0;
+        if (strtoupper(substr(PHP_OS, 0, 3)) == 'WIN') {
+            $fs = new \COM("Scripting.FileSystemObject");        
+            try {
+                $getFile = $fs->GetFile($file_path);
+                $size = $getFile->Size;
+            } catch (\Exception $ex) {
+                $size = 0;
+            }
+            if($size == 0){
+                $size = filesize($file_path);
+            }
+        } else {
+            $size = filesize($file_path);
+        }
+        return $size;
+
+        
     }
 
     /**
