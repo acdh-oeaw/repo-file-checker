@@ -256,6 +256,10 @@ class Checking {
         
         $fileTypeList = array();
         
+        if($numOfFiles == 0){
+            $this->jsonHandler->writeDataToJsonFile( array("errorType" => "Directory is empty" ,"dir" => "$dir", "filename" => ""), "error", $this->generatedReportDirectory, $jsonOutput);
+        }
+        
         while(false !== ($entry = $d->read())) {
             
             // skip hidden files
