@@ -24,6 +24,7 @@ class Checking {
     
     private $tmpDir;
     private $reportDir;
+    private $signatureDir;
     private $dirList = array();
     private $dir;
     private $misc;
@@ -41,6 +42,12 @@ class Checking {
         
         $this->cfg = parse_ini_file('config.ini');        
         
+        if($this->checkTmpDir($this->cfg['signatureDir'])){
+            $this->signatureDir = $this->cfg['signatureDir'];
+        }else {
+            die();
+        }
+        
         $this->chkFunc = new CheckFunctions();
         
         if($this->checkTmpDir($this->cfg['tmpDir'])){
@@ -48,7 +55,7 @@ class Checking {
         }else {
             die();
         }
-        
+                
         if($this->checkReportDir($this->cfg['reportDir'])){
             $this->reportDir = $this->cfg['reportDir'];
             //create the file list html
@@ -60,6 +67,7 @@ class Checking {
         }else {
             die();
         }
+        
     }
     
     /**
@@ -202,12 +210,12 @@ class Checking {
      * @param string $str
      * @return bool
      */
-    private function checkTmpDir(string $str): bool{
+    private function checkTmpDir(string $str, string $type = "tempDir"): bool{
         
         if(is_dir($str) && is_writable($str)){
             return true;
         }else {
-            die("\n ERROR tmpDir (".$str.") is not exists or not writable, please check the config.ini \n");
+            die("\n ERROR ".$type." (".$str.") is not exists or not writable, please check the config.ini \n");
         }        
     }
     

@@ -1,6 +1,6 @@
 tmpDir="MY_TEMP_DIR"
 reportDir="MY_REPORTS_DIR"
-
+signatureDir="signatures"
 blackList[] = "app,apk,cfg"
 pdfSize = 80000000
 zipSize = 100000000

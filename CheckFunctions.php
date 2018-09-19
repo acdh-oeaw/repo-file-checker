@@ -25,10 +25,20 @@ class CheckFunctions {
         $bl = explode(",", trim($bl[0]));
         $this->blackList = array_map('trim',$bl); 
         
-        //mime types
-        $this->mimeTypes = $this->misc->getMIME();
-        $this->mimeTypes = array_change_key_case($this->mimeTypes,CASE_LOWER);
-         
+        $dirContent = $this->misc->scan_dir_by_date($cfg['signatureDir']);
+        if(count($dirContent) > 0){
+            $dirContent = $dirContent[0];
+            if (strpos($dirContent, '.xml') === false) {
+                die('\n Wrong file inside the signatureDir! \n');
+            }
+            $this->mimeTypes = $this->misc->getMimeFromPronom($cfg['signatureDir'].'/'.$dirContent);
+            if(count($this->mimeTypes) < 1) {
+                die('MIME type generation failed!');
+            }
+        }else{
+            die("\nThere is no file inside the signature directory!\n");
+        }
+        
         if($this->checkTmpDir($cfg['tmpDir'])){
             $this->tmpDir = $cfg['tmpDir'];
         }else {
@@ -175,7 +185,7 @@ class CheckFunctions {
      */
     public function makeUnique(array $data)
     {
-        $serialized = array_map(create_function('$a', 'return $a;'), $data);
+        $serialized = array_map(function($a) {return $a;}, $data);
         $unique = array_unique($serialized);
         return $unique;
         return array_intersect_key($unique, $data);
