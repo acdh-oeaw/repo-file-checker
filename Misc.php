@@ -116,8 +116,13 @@ class Misc {
         while( $reader->read() ) {
             if ($reader->nodeType == \XMLReader::ELEMENT && $reader->name == 'FileFormat') {
                 $node = simplexml_import_dom($doc->importNode($reader->expand(), true));
-                if(isset($node->Extension)) {
-                    array_push($extArray, strtolower((string)$node->Extension));
+                
+                if(isset($node->Extension) && count($node->Extension) > 1){
+                    foreach($node->Extension as $nodes){
+                        array_push($extArray, strtolower((string)$nodes));   
+                    }
+                }else if(isset($node->Extension)){
+                    array_push($extArray, strtolower((string)$node->Extension));   
                 }
             }
         }

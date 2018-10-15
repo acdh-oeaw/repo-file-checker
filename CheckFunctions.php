@@ -141,13 +141,7 @@ class CheckFunctions {
      * @return bool
      */
     public function checkMimeTypes(string $extension, string $type): bool{
-        if(!isset($this->mimeTypes[strtolower($extension)])){
-            return false;
-        }else if(is_array($this->mimeTypes[strtolower($extension)]) && 
-                !in_array($type, $this->mimeTypes[strtolower($extension)]) && 
-                $type != "dir"){
-            return false;
-        }
+        if(!in_array($extension, $this->mimeTypes)){ return false; }
         return true;
     }
     
