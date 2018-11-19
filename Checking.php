@@ -90,7 +90,7 @@ class Checking {
             }
         }
         
-        if($output == 0 || $output == 1 ){
+        if($output == 0 || $output == 1 || $output == 3 ){
 
             if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'fileList') === false){
                 die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'fileList.json');
@@ -198,6 +198,31 @@ class Checking {
                     fclose($dirDataFile);
                 }
                 $this->html->generateFileTypeListHtml($this->generatedReportDirectory);
+                
+            }
+            
+             if ($output == 3 ){
+                //create basic html
+                $this->html->generateFileListHtml($this->generatedReportDirectory);
+                $this->html->generateErrorListHtml($this->generatedReportDirectory);
+                $this->html->generateDirListHtml($this->generatedReportDirectory);
+                
+                $file = fopen($this->generatedReportDirectory.'/fileTypeList.json', 'r');
+                $content = stream_get_contents($file);
+                $obj = json_decode($content, true);
+                $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
+                if(count($result) > 0){
+                    $dirDataFile = fopen($this->generatedReportDirectory.'/directories.json', 'w');
+                    fwrite($dirDataFile, json_encode($result));
+                    fclose($dirDataFile);
+                }
+                $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
+                if(count($resultExt) > 0){
+                    $dirDataFile = fopen($this->generatedReportDirectory.'/extensions.json', 'w');
+                    fwrite($dirDataFile, json_encode($resultExt));
+                    fclose($dirDataFile);
+                }
+                $this->html->generateFileTypeJstreeHtml($this->generatedReportDirectory);
             }
         }
     }

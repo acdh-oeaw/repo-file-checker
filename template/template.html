@@ -15,7 +15,9 @@
         <link rel="stylesheet" href="css/jstreecss.css" />
 	<script type="text/javascript" language="javascript" class="init">
 		$(document).ready(function() {
-			$('#dirsDT').DataTable( {
+                    $('#fileTypeDT').DataTable();
+                    
+                    $('#dirsDT').DataTable( {
                         "ajax": "directoryList.json",
                         "dataSrc": "data",
                         "deferRender": true,

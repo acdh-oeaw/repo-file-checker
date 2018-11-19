@@ -133,14 +133,59 @@ class GenerateHTMLOutput {
     }
     
     
-   
+    public function generateFileTypeListHtml(string $directory): bool {
+                
+        $extensionList = array();
+        
+        $file = fopen($directory.'/extensions.json', 'r');
+        $content = stream_get_contents($file);
+        $obj = json_decode($content, true);
+        
+        foreach($obj as $o ) {
+            $ext = "";
+            $ext = $o['text'];
+            foreach($o['children'] as $d) {
+                $text = explode(':', $d['text']);
+                $extensionList[$ext][$text[0]] = $text[1];
+            }
+        }
+        ksort($extensionList, SORT_STRING);
+       
+        $fileList = '<div class="card" id="">
+                        <div class="header">
+                            <h4 class="title">File Types By Extensions</h4>
+                        </div>
+                    <div class="content table-responsive table-full-width" >';
+        $fileList .= "<table class=\"table table-hover table-striped\" id=\"fileTypeDT\">\n";
+            $fileList .= "<thead>\n";
+            $fileList .= "<tr><th><b>Extension</b></th><th><b>Count</b></th><th><b>SumSize</b></th><th><b>MinSize</b></th><th><b>MaxSize</b></th></tr>\n";
+            $fileList .= "</thead>\n";
+            $fileList .= "<tbody>\n";
+        foreach($extensionList as $k => $v){
+            $fileList .= "<tr>\n";
+            $fileList .= "<td width='10%'>{$k}</td>\n";
+            $fileList .= "<td width='18%'>{$v['fileCount']}</td>\n";
+            $fileList .= "<td width='18%'>{$v['SumSize']}</td>\n";
+            $fileList .= "<td width='18%'>{$v['MinSize'] }</td>\n";
+            $fileList .= "<td width='18%'>{$v['MaxSize'] }</td>\n";
+            $fileList .= "</tr>\n";
+        }
+        $fileList .= "</tbody>\n";
+        $fileList .= "</table>\n\n";        
+        
+        $fileList .= "</div>\n\n";
+        $fileList .= "</div>\n\n";
+        $this->writeDataToHtmlFile($fileList, $directory, "fileTypeList");  
+        return $fileList;
+    }
+    
     
     /**
      * Creates the FileTypeList HTML
      * 
      * @return string
      */
-    public function generateFileTypeListHtml(string $directory): string {
+    public function generateFileTypeJstreeHtml(string $directory): string {
         
         $fileList = "";
         
@@ -173,65 +218,6 @@ class GenerateHTMLOutput {
         
         return true;
         
-        
-                
-        $extensionList = array();
-        $directoryList = array();
-        
-        foreach($this->dirList as $d){
-            if(isset($d["extension"])){                
-                $extensionList[$d["extension"]][] = $d;
-            }else{
-                $directoryList[] = $d;
-            }
-        }
-        
-        //sort alphabetically the extension array elements
-        ksort($extensionList, SORT_STRING);
-        
-        $fileList = '<div class="card" id="fileTypeList">
-                        <div class="header">
-                            <h4 class="title">File Type List</h4>
-                        </div>
-                    <div class="content table-responsive table-full-width" >';
-        
-        foreach($extensionList as $k => $v){
-            $fileSumSize = 0;
-            $fileCount = 0;
-            $min = 0;
-            $max = 0;
-            $size = array_column($v, 'size');
-            $min = min($size);
-            $max = max($size);
-            
-            foreach($v as $val){
-                $fileSumSize += $val["size"];
-                $fileCount += 1;
-            }
-            
-            $avgSize = $fileSumSize / $fileCount;
-                        
-            $fileList .= "<table class=\"table table-hover table-striped\">\n";
-            $fileList .= "<thead>\n";
-            $fileList .= "<tr><th><b>Extension</b></th><th><b>Count</b></th><th><b>SumSize</b></th><th><b>AvgSize</b></th><th><b>MinSize</b></th><th><b>MaxSize</b></th></tr>\n";
-            $fileList .= "</thead>\n";
-            $fileList .= "<tbody>\n";
-            $fileList .= "<tr>\n";
-            $fileList .= "<td width='10%'>{$k}</td>\n";
-            $fileList .= "<td width='18%'>{$fileCount}</td>\n";
-            $fileList .= "<td width='18%'>".$this->misc->formatSizeUnits($fileSumSize)."</td>\n";
-            $fileList .= "<td width='18%'>".$this->misc->formatSizeUnits($avgSize)."</td>\n";
-            $fileList .= "<td width='18%'>".$this->misc->formatSizeUnits($min)."</td>\n";
-            $fileList .= "<td width='18%'>".$this->misc->formatSizeUnits($max)."</td>\n";
-            $fileList .= "</tr>\n";
-            $fileList .= "</tbody>\n";
-            $fileList .= "</table>\n\n";        
-        }
-        
-        $fileList .= "</div>\n\n";
-        $fileList .= "</div>\n\n";
-                
-        return $fileList;
     }
     
 }
