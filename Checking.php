@@ -34,6 +34,7 @@ class Checking {
     private $html;
     private $cfg;
     private $fileTypeArray = array();
+    private $mainDir;
     
     public function __construct(){
         $this->misc = new MC();
@@ -103,8 +104,6 @@ class Checking {
             if($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'directoryList') === false){
                 die("Error! Json file cant close: ".$this->generatedReportDirectory.'/'.'directoryList.json');
             }
-            
-            
             
             $buffer = "";
             $handle = fopen($this->generatedReportDirectory.'/'.'files.json', "r");
@@ -198,6 +197,28 @@ class Checking {
                     fclose($dirDataFile);
                 }
                 $this->html->generateFileTypeListHtml($this->generatedReportDirectory);
+                
+                if(!file_exists($this->generatedReportDirectory.'/fileTypeList.json')){
+                    copy('template/fileTypeList.json',$this->generatedReportDirectory.'/fileTypeList.json');
+                }
+                if(!file_exists($this->generatedReportDirectory.'/error.json')){
+                    copy('template/error.json',$this->generatedReportDirectory.'/error.json');
+                }
+                if(!file_exists($this->generatedReportDirectory.'/directories.json')){
+                    copy('template/directories.json',$this->generatedReportDirectory.'/directories.json');
+                }
+                if(!file_exists($this->generatedReportDirectory.'/directoryList.json')){
+                    copy('template/directoryList.json',$this->generatedReportDirectory.'/directoryList.json');
+                }
+                if(!file_exists($this->generatedReportDirectory.'/extensions.json')){
+                    copy('template/extensions.json',$this->generatedReportDirectory.'/extensions.json');
+                }
+                if(!file_exists($this->generatedReportDirectory.'/files.json')){
+                    copy('template/files.json',$this->generatedReportDirectory.'/files.json');
+                }
+                if(!file_exists($this->generatedReportDirectory.'/fileList.json')){
+                    copy('template/fileList.json',$this->generatedReportDirectory.'/fileList.json');
+                }               
                 
             }
             
@@ -308,7 +329,7 @@ class Checking {
                 if($recurse && is_readable("$dir$entry/")) { $childrenDir = true;}
                                 
                 //check the file name validity
-                $valid = $this->chkFunc->checkDirectoryNameValidity("$dir$entry");
+                $valid = $this->chkFunc->checkDirectoryNameValidity("$dir$entry", $this->dir);
                 if($valid === false && !empty("$dir$entry")){
                     $this->jsonHandler->writeDataToJsonFile( array("errorType" => "Directory name contains invalid characters" ,"dir" => "$dir$entry", "filename" => ""), "error", $this->generatedReportDirectory, $jsonOutput);
                 }

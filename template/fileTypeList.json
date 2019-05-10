@@ -1,0 +1,13 @@
+{ "data": 
+    [ 
+        {"directories":
+            {"":
+                { "extension":
+                    {
+                    "":{ "sumSize":{"sum":""},"fileCount":{"fileCount":""},"minSize":{"min":""},"maxSize":{"max":""} }
+                    }
+                }
+            }
+        }
+    ] 
+}

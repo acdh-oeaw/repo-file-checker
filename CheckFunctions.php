@@ -92,8 +92,9 @@ class CheckFunctions {
      * @param string $dir
      * @return bool
      */
-    public function checkDirectoryNameValidity(string $dir): bool {
- 
+    public function checkDirectoryNameValidity(string $dir, string $mainDir): bool {
+        //remove the main dir from the dir url
+        $dir = str_replace($mainDir, "", $dir);
         if(preg_match("#^(?:[a-zA-Z]:|\.\.?)?(?:[\\\/][a-zA-Z0-9_.\'\"-]*)+$#", $dir) !== 1){
             return false;
         }else{
