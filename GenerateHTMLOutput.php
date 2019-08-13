@@ -126,6 +126,7 @@ class GenerateHTMLOutput {
         copy('template/css/throbber.gif', $directory.'/css/throbber.gif');
         copy('template/css/40px.png', $directory.'/css/40px.png');
         copy('template/css/32px.png', $directory.'/css/32px.png');
+        copy('template/.htaccess', $directory.'/.htaccess');
 
         $template=file_get_contents('template/template.html');
         $tpl=str_replace("{html_file_content}", $string,$template);

@@ -144,7 +144,7 @@ class CheckFunctions {
      * @return bool
      */
     public function checkMimeTypes(string $extension, string $type): bool{
-        if(!in_array($extension, $this->mimeTypes)){ return false; }
+        if(!in_array(strtolower($extension), $this->mimeTypes)){ return false; }
         return true;
     }
     
