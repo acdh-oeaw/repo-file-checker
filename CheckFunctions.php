@@ -60,10 +60,10 @@ class CheckFunctions {
         $result = array();
         // use an existing bag
         $bag = new \BagIt($filename);
-        $bag->validate();    
+        $bag->validate();
         if(is_array($bag->getBagErrors())){
-            if(count($bag->getBagErrors() > 0)){
-                $result = $bag->getBagErrors();
+            if(count($bag->getBagErrors()) > 0){
+                $result[$filename] = $bag->getBagErrors();
             }
         }
         return $result;

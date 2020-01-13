@@ -445,7 +445,26 @@ class Checking {
                     $bagItResult = array();
                     $bagItResult = $this->chkFunc->checkBagitFile("$dir$entry");
                     if(count($bagItResult) > 0){
-                        $this->jsonHandler->writeDataToJsonFile(array("errorType" =>" BagIt file is not valid or can not be analysed", "dir" => $dir, "filename" => $entry, "errorMSG" => $bagItResult), "error", $this->generatedReportDirectory, $jsonOutput);
+                        foreach ($bagItResult as $filename => $val) {
+                            $dir = "";
+                            if ( (strpos($filename, '/') !== false) || (strpos($filename, '\\') !== false) ) {
+                                $dir = $filename;
+                                $filename = substr($filename, strrpos($filename, '/') + 1);
+                                $dir = str_replace($filename, '', $dir);
+                            }
+                            if(is_array($val) && count($val) > 0) {
+                                foreach($val as $v) {
+                                    $error = "";
+                                    if(isset($v[0]) && isset($v[1])){
+                                        $error = $v[0]."_".$v[1];
+                                    }else {
+                                        $error = $v[0];
+                                    }
+                                    (empty($error)) ? $error = "BagIt file is not valid or can not be analysed" : "";
+                                    $this->jsonHandler->writeDataToJsonFile(array("errorType" =>$error, "dir" => $dir, "filename" => $filename, "errorMSG" => $error), "error", $this->generatedReportDirectory, $jsonOutput);
+                                }
+                            }
+                        }
                     }
                 }
                 
