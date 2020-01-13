@@ -456,7 +456,7 @@ class Checking {
                                 foreach($val as $v) {
                                     $error = "";
                                     if(isset($v[0]) && isset($v[1])){
-                                        $error = $v[0]."_".$v[1];
+                                        $error = $v[0].". error: ".$v[1];
                                     }else {
                                         $error = $v[0];
                                     }
