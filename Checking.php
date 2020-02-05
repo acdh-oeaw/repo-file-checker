@@ -106,7 +106,7 @@ class Checking {
             }
             
             $buffer = "";
-            $handle = fopen($this->generatedReportDirectory.'/'.'files.json', "r");
+            (file_exists($this->generatedReportDirectory.'/'.'files.json')) ? $handle = fopen($this->generatedReportDirectory.'/'.'files.json', "r") : $handle = "";
             if ($handle) {
                 while (!feof($handle)) {
                     $buffer .= stream_get_line($handle, 4096);
@@ -181,23 +181,25 @@ class Checking {
                 $this->html->generateErrorListHtml($this->generatedReportDirectory);
                 $this->html->generateDirListHtml($this->generatedReportDirectory);
                 
-                $file = fopen($this->generatedReportDirectory.'/fileTypeList.json', 'r');
-                $content = stream_get_contents($file);
-                $obj = json_decode($content, true);
-                $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
-                if(count($result) > 0){
-                    $dirDataFile = fopen($this->generatedReportDirectory.'/directories.json', 'w');
-                    fwrite($dirDataFile, json_encode($result));
-                    fclose($dirDataFile);
-                }
-                $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
-                if(count($resultExt) > 0){
-                    $dirDataFile = fopen($this->generatedReportDirectory.'/extensions.json', 'w');
-                    fwrite($dirDataFile, json_encode($resultExt));
-                    fclose($dirDataFile);
-                }
-                $this->html->generateFileTypeListHtml($this->generatedReportDirectory);
+                if(file_exists($this->generatedReportDirectory.'/'.'fileTypeList.json')) { 
+                    $file = fopen($this->generatedReportDirectory.'/'.'fileTypeList.json', "r");
                 
+                    $content = stream_get_contents($file);
+                    $obj = json_decode($content, true);
+                    $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
+                    if(count($result) > 0){
+                        $dirDataFile = fopen($this->generatedReportDirectory.'/directories.json', 'w');
+                        fwrite($dirDataFile, json_encode($result));
+                        fclose($dirDataFile);
+                    }
+                    $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
+                    if(count($resultExt) > 0){
+                        $dirDataFile = fopen($this->generatedReportDirectory.'/extensions.json', 'w');
+                        fwrite($dirDataFile, json_encode($resultExt));
+                        fclose($dirDataFile);
+                    }
+                    $this->html->generateFileTypeListHtml($this->generatedReportDirectory);
+                }
                 if(!file_exists($this->generatedReportDirectory.'/fileTypeList.json')){
                     copy('template/fileTypeList.json',$this->generatedReportDirectory.'/fileTypeList.json');
                 }
@@ -228,22 +230,24 @@ class Checking {
                 $this->html->generateErrorListHtml($this->generatedReportDirectory);
                 $this->html->generateDirListHtml($this->generatedReportDirectory);
                 
-                $file = fopen($this->generatedReportDirectory.'/fileTypeList.json', 'r');
-                $content = stream_get_contents($file);
-                $obj = json_decode($content, true);
-                $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
-                if(count($result) > 0){
-                    $dirDataFile = fopen($this->generatedReportDirectory.'/directories.json', 'w');
-                    fwrite($dirDataFile, json_encode($result));
-                    fclose($dirDataFile);
+                if(file_exists($this->generatedReportDirectory.'/'.'fileTypeList.json')) { 
+                    $file = fopen($this->generatedReportDirectory.'/fileTypeList.json', 'r');
+                    $content = stream_get_contents($file);
+                    $obj = json_decode($content, true);
+                    $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
+                    if(count($result) > 0){
+                        $dirDataFile = fopen($this->generatedReportDirectory.'/directories.json', 'w');
+                        fwrite($dirDataFile, json_encode($result));
+                        fclose($dirDataFile);
+                    }
+                    $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
+                    if(count($resultExt) > 0){
+                        $dirDataFile = fopen($this->generatedReportDirectory.'/extensions.json', 'w');
+                        fwrite($dirDataFile, json_encode($resultExt));
+                        fclose($dirDataFile);
+                    }
+                    $this->html->generateFileTypeJstreeHtml($this->generatedReportDirectory);
                 }
-                $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
-                if(count($resultExt) > 0){
-                    $dirDataFile = fopen($this->generatedReportDirectory.'/extensions.json', 'w');
-                    fwrite($dirDataFile, json_encode($resultExt));
-                    fclose($dirDataFile);
-                }
-                $this->html->generateFileTypeJstreeHtml($this->generatedReportDirectory);
             }
         }
     }
