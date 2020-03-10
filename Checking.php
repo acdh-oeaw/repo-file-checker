@@ -186,17 +186,21 @@ class Checking {
                 
                     $content = stream_get_contents($file);
                     $obj = json_decode($content, true);
-                    $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
-                    if(count((array)$result) > 0){
-                        $dirDataFile = fopen($this->generatedReportDirectory.'/directories.json', 'w');
-                        fwrite($dirDataFile, json_encode($result));
-                        fclose($dirDataFile);
+                    if(isset($obj['data'][0]['directories']) && count((array)$obj['data'][0]['directories']) > 0){
+                        $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
+                        if(count((array)$result) > 0){
+                            $dirDataFile = fopen($this->generatedReportDirectory.'/directories.json', 'w');
+                            fwrite($dirDataFile, json_encode($result));
+                            fclose($dirDataFile);
+                        }
                     }
-                    $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
-                    if(count((array)$resultExt) > 0){
-                        $dirDataFile = fopen($this->generatedReportDirectory.'/extensions.json', 'w');
-                        fwrite($dirDataFile, json_encode($resultExt));
-                        fclose($dirDataFile);
+                    if(isset($obj['data'][0]['extensions']) && count((array)$obj['data'][0]['extensions']) > 0){
+                        $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
+                        if(count((array)$resultExt) > 0){
+                            $dirDataFile = fopen($this->generatedReportDirectory.'/extensions.json', 'w');
+                            fwrite($dirDataFile, json_encode($resultExt));
+                            fclose($dirDataFile);
+                        }
                     }
                     $this->html->generateFileTypeListHtml($this->generatedReportDirectory);
                 }
