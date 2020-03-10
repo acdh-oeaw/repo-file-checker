@@ -187,13 +187,13 @@ class Checking {
                     $content = stream_get_contents($file);
                     $obj = json_decode($content, true);
                     $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
-                    if(count($result) > 0){
+                    if(count((array)$result) > 0){
                         $dirDataFile = fopen($this->generatedReportDirectory.'/directories.json', 'w');
                         fwrite($dirDataFile, json_encode($result));
                         fclose($dirDataFile);
                     }
                     $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
-                    if(count($resultExt) > 0){
+                    if(count((array)$resultExt) > 0){
                         $dirDataFile = fopen($this->generatedReportDirectory.'/extensions.json', 'w');
                         fwrite($dirDataFile, json_encode($resultExt));
                         fclose($dirDataFile);
