@@ -139,6 +139,10 @@ class GenerateHTMLOutput {
         $extensionList = array();
         
         $file = fopen($directory.'/extensions.json', 'r');
+        if(!$file) {
+            return false;
+        }            
+        
         $content = stream_get_contents($file);
         $obj = json_decode($content, true);
         
