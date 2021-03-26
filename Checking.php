@@ -2,23 +2,18 @@
 
 namespace OEAW\Checks;
 
-
 use OEAW\Checks\Misc as MC;
 use OEAW\Checks\CheckFunctions as CheckFunctions;
 use OEAW\Checks\JsonHandler as JH;
 use OEAW\Checks\GenerateHTMLOutput as HTML;
-
 
 require_once 'Misc.php';
 require_once 'CheckFunctions.php';
 require_once 'JsonHandler.php';
 require_once 'GenerateHTMLOutput.php';
 
-
 require __DIR__ . '/vendor/autoload.php';
 require __DIR__ . '/vendor/scholarslab/bagit/lib/bagit.php';
-
-
 
 class Checking {
     
@@ -46,17 +41,15 @@ class Checking {
         if($this->checkTmpDir($this->cfg['signatureDir'])){
             $this->signatureDir = $this->cfg['signatureDir'];
         }else {
-            die();
+            die('Signature Dir does not exists! Please check your settings in the config.ini file');
         }
-        
-        $this->chkFunc = new CheckFunctions();
         
         if($this->checkTmpDir($this->cfg['tmpDir'])){
             $this->tmpDir = $this->cfg['tmpDir'];
         }else {
-            die();
+            die('Temp Dir does not exists! Please check your settings in the config.ini file');
         }
-                
+        
         if($this->checkReportDir($this->cfg['reportDir'])){
             $this->reportDir = $this->cfg['reportDir'];
             //create the file list html
@@ -66,9 +59,10 @@ class Checking {
             mkdir($this->reportDir.'/'.$fn.'/css');
             $this->generatedReportDirectory = $this->reportDir.'/'.$fn;
         }else {
-            die();
+            die('Report Dir does not exists! Please check your settings in the config.ini file');
         }
         
+        $this->chkFunc = new CheckFunctions();
     }
     
     /**
@@ -264,9 +258,8 @@ class Checking {
      * @param string $str
      * @return bool
      */
-    private function checkTmpDir(string $str, string $type = "tempDir"): bool{
-        
-        if(is_dir($str) && is_writable($str)){
+    private function checkTmpDir(string $str, string $type = "tempDir"): bool{       
+        if(is_dir(realpath($str)) && is_writable($str)){
             return true;
         }else {
             die("\n ERROR ".$type." (".$str.") is not exists or not writable, please check the config.ini \n");
