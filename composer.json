@@ -2,7 +2,7 @@
     "require": {
         "guiguiboy/php-cli-progress-bar": "0.0.4",
 	"scholarslab/bagit": "0.3.0",
-	"setasign/fpdi-fpdf": "^2.0"
+	"smalot/pdfparser": "*"
     },
     "autoload": {
         "psr-4": {"OEAW\\": "/"}
