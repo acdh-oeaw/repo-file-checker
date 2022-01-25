@@ -23,11 +23,11 @@ class Checking {
     private $fileTypeArray = array();
     private $mainDir;
 
-    public function __construct(string $configFile) {
+    public function __construct(array $config) {
         $this->misc = new MC();
         $this->jsonHandler = new JH();
         $this->html = new HTML();
-        $this->cfg = parse_ini_file($configFile);
+        $this->cfg = $config;
 
         $this->setSignatureDir();
         $this->setTmpDir();
@@ -40,7 +40,7 @@ class Checking {
             die2('Report Dir does not exists! Please check your settings in the config.ini file');
         }
 
-        $this->chkFunc = new CheckFunctions();
+        $this->chkFunc = new CheckFunctions($config);
     }
     
     private function setTmpDir(): void {

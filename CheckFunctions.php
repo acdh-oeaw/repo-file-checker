@@ -14,15 +14,13 @@ class CheckFunctions {
     private $misc;
     private $tmpDir;
 
-    public function __construct() {
-        $cfg = parse_ini_file('config.ini');
-
+    public function __construct(array $cfg) {
         $this->misc = new MC();
 
         //blacklist
         $bl = $cfg['blackList'];
-        $bl = explode(",", trim($bl[0]));
         $this->blackList = array_map('trim', $bl);
+        print_r($this->blackList);
 
         $dirContent = $this->misc->scan_dir_by_date($cfg['signatureDir']);
         if (count($dirContent) > 0) {

@@ -15,11 +15,16 @@ function die2(string $msg) {
 }
 
 $parser = new ArgumentParser();
-$parser->addArgument('--config', default: 'config.ini', help: 'configuration file in ini format (see config.ini.sample)');
+$parser->addArgument('--signatureDir', default: __DIR__ . '/signatures', help: "Directory containing the DROID_SignatureFile_V94.xml file (default: %(default)s)");
+$parser->addArgument('--tmpDir', required: true);
+$parser->addArgument('--reportDir', required: true);
+$parser->addArgument('--blackList', nargs: ArgumentParser::NARGS_REQ, default: ['app', 'apk', 'cfg'], help: "Extenstions of files to be skipped (default: [%(default)s])");
+$parser->addArgument('--pdfSize', type: ArgumentParser::TYPE_INT, default: 80000000, help: "Maximum PDF file size for some kind of check (default: %(default)s)");
+$parser->addArgument('--zipSize', type: ArgumentParser::TYPE_INT, default: 100000000, help: "Maximum ZIP file size for other kind of check (default: %(default)s)");
 $parser->addArgument('directoryToCheck');
 $parser->addArgument('outputMode', choices: [0, 1, 2, 3], type: ArgumentParser::TYPE_INT, help:"0 - check files  (json output) and create file type report (json output); 1 - check files (json output and html output) and create file type report (json output); 2 - check files (NDJSON output); 3 - like 2. but with a Type List as a treeview");
 $args   = $parser->parseArgs();
 
-$ch = new CH($args->config);
+$ch = new CH((array) $args);
 $ret = $ch->startChecking($args->directoryToCheck, $args->outputMode);
 exit($ret ? 0 : 2);
