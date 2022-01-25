@@ -7,14 +7,6 @@ use OEAW\Checks\CheckFunctions as CheckFunctions;
 use OEAW\Checks\JsonHandler as JH;
 use OEAW\Checks\GenerateHTMLOutput as HTML;
 
-require_once 'Misc.php';
-require_once 'CheckFunctions.php';
-require_once 'JsonHandler.php';
-require_once 'GenerateHTMLOutput.php';
-
-require __DIR__ . '/vendor/autoload.php';
-require __DIR__ . '/vendor/scholarslab/bagit/lib/bagit.php';
-
 class Checking {
 
     private $tmpDir;
@@ -31,11 +23,11 @@ class Checking {
     private $fileTypeArray = array();
     private $mainDir;
 
-    public function __construct() {
+    public function __construct(string $configFile) {
         $this->misc = new MC();
         $this->jsonHandler = new JH();
         $this->html = new HTML();
-        $this->cfg = parse_ini_file('config.ini');
+        $this->cfg = parse_ini_file($configFile);
 
         $this->setSignatureDir();
         $this->setTmpDir();
@@ -45,7 +37,7 @@ class Checking {
             //create the file list html
             $this->createReportDirFiles();
         } else {
-            die('Report Dir does not exists! Please check your settings in the config.ini file');
+            die2('Report Dir does not exists! Please check your settings in the config.ini file');
         }
 
         $this->chkFunc = new CheckFunctions();
@@ -55,7 +47,7 @@ class Checking {
         if ($this->checkTmpDir($this->cfg['tmpDir'])) {
             $this->tmpDir = $this->cfg['tmpDir'];
         } else {
-            die('Temp Dir does not exists! Please check your settings in the config.ini file');
+            die2('Temp Dir does not exists! Please check your settings in the config.ini file');
         }
     }
 
@@ -63,7 +55,7 @@ class Checking {
         if ($this->checkTmpDir($this->cfg['signatureDir'])) {
             $this->signatureDir = $this->cfg['signatureDir'];
         } else {
-            die('Signature Dir does not exists! Please check your settings in the config.ini file');
+            die2('Signature Dir does not exists! Please check your settings in the config.ini file');
         }
     }
     
@@ -85,31 +77,32 @@ class Checking {
      * @param string $dir
      * @return type
      */
-    public function startChecking(string $dir, int $output = 0) {
+    public function startChecking(string $dir, int $output = 0): bool {
         define('YOUR_EOL', "\n");
 
+        $this->jsonHandler->noError = true;
         $this->dir = $dir;
         $this->getJsonFileList($dir, true, false, $output);
 
         if (count($this->fileTypeArray) > 0) {
             $this->jsonHandler->writeDataToJsonFile($this->fileTypeArray, "fileTypeList", $this->generatedReportDirectory);
             if ($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'fileTypeList') === false) {
-                die("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'fileTypeList.json');
+                die2("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'fileTypeList.json');
             }
         }
 
         if ($output == 0 || $output == 1 || $output == 3) {
 
             if ($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'fileList') === false) {
-                die("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'fileList.json');
+                die2("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'fileList.json');
             }
 
             if ($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'files') === false) {
-                die("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'files.json');
+                die2("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'files.json');
             }
 
             if ($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'directoryList') === false) {
-                die("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'directoryList.json');
+                die2("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'directoryList.json');
             }
 
             $buffer = "";
@@ -153,7 +146,7 @@ class Checking {
                     }
 
                     if ($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'duplicates_size') === false) {
-                        die("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'duplicates_size.json');
+                        die2("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'duplicates_size.json');
                     }
                 }
 
@@ -176,13 +169,13 @@ class Checking {
                     }
 
                     if ($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'duplicates') === false) {
-                        die("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'duplicates.json');
+                        die2("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'duplicates.json');
                     }
                 }
             }
 
             if ($this->jsonHandler->closeJsonFiles($this->generatedReportDirectory, 'error') === false) {
-                die("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'error.json');
+                die2("Error! Json file cant close: " . $this->generatedReportDirectory . '/' . 'error.json');
             }
 
 
@@ -264,6 +257,7 @@ class Checking {
                 }
             }
         }
+        return $this->jsonHandler->noError;
     }
 
     /**
@@ -277,7 +271,7 @@ class Checking {
         if (is_dir(realpath($str)) && is_writable($str)) {
             return true;
         } else {
-            die("\n ERROR " . $type . " (" . $str . ") is not exists or not writable, please check the config.ini \n");
+            die2("\n ERROR " . $type . " (" . $str . ") is not exists or not writable, please check the config.ini \n");
         }
     }
 
@@ -293,7 +287,7 @@ class Checking {
         if (is_dir($str) && is_writable($str)) {
             return true;
         } else {
-            die("\nERROR reportDIR (" . $str . ") is not exists or not writable, please check the config.ini \n");
+            die2("\nERROR reportDIR (" . $str . ") is not exists or not writable, please check the config.ini \n");
         }
     }
 
@@ -320,7 +314,7 @@ class Checking {
 
         echo "\n File list generating...\n";
         // open pointer to directory and read list of files
-        $d = @dir($dir) or die("getFileList: Failed opening directory $dir for reading");
+        $d = @dir($dir) or die2("getFileList: Failed opening directory $dir for reading");
 
         $files = scandir($dir);
         // Count number of files and store them to variable..

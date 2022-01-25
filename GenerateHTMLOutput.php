@@ -114,7 +114,7 @@ class GenerateHTMLOutput {
     public function writeDataToHtmlFile(string $string, string $directory, string $filename){
         
         if(empty($string) || empty($directory) || empty($filename)){
-            die("writeDataToHtmlFile -> missing data");
+            die2("writeDataToHtmlFile -> missing data");
         }
         copy('template/css/style.css', $directory.'/css/style.css');
         copy('template/js/jquery.js', $directory.'/js/jquery.js');

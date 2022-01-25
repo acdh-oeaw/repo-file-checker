@@ -1,19 +1,25 @@
 <?php
 
 use OEAW\Checks\Checking as CH;
-require_once 'Checking.php';
+use zozlak\argparse\ArgumentParser;
+$composerDir = realpath(__DIR__);
+while ($composerDir !== false && !file_exists("$composerDir/vendor")) {
+    $composerDir = realpath("$composerDir/..");
+}
+require_once "$composerDir/vendor/autoload.php";
+require_once "$composerDir/vendor/scholarslab/bagit/lib/bagit.php";
 
-if ($argc < 3 || !file_exists($argv[1])) {
-    echo "\nusage: $argv[0] directory_name 0 \n\n"
-            . "First arg: 0 => check files  (json output) and create file type report (json output)\n \n"
-            . "1 => check files (json output and html output) and create file type report (json output) \n"
-            . "2 => check files (NDJSON output) \n"
-            . "3 => the same like the 2. just here the Type List is in a treeview \n";
-    return;
+function die2(string $msg) {
+    echo $msg;
+    exit(1);
 }
 
-$dir = $argv[1];
-$output = (int)$argv[2];
+$parser = new ArgumentParser();
+$parser->addArgument('--config', default: 'config.ini', help: 'configuration file in ini format (see config.ini.sample)');
+$parser->addArgument('directoryToCheck');
+$parser->addArgument('outputMode', choices: [0, 1, 2, 3], type: ArgumentParser::TYPE_INT, help:"0 - check files  (json output) and create file type report (json output); 1 - check files (json output and html output) and create file type report (json output); 2 - check files (NDJSON output); 3 - like 2. but with a Type List as a treeview");
+$args   = $parser->parseArgs();
 
-$ch = new CH();
-echo $ch->startChecking($dir, $output);
+$ch = new CH($args->config);
+$ret = $ch->startChecking($args->directoryToCheck, $args->outputMode);
+exit($ret ? 0 : 2);

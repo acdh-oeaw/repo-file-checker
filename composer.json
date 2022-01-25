@@ -11,11 +11,13 @@
         }
     ],
     "require": {
+        "php": ">=8.0 <8.2",
         "guiguiboy/php-cli-progress-bar": "0.0.4",
         "scholarslab/bagit": "0.3.0",
-        "smalot/pdfparser": "*"
+        "smalot/pdfparser": "*",
+        "zozlak/argparse": "^1"
     },
     "autoload": {
-        "psr-4": {"OEAW\\": "/"}
+        "psr-4": {"OEAW\\Checks\\": "./"}
     }
 }

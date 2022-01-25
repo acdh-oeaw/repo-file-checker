@@ -6,7 +6,7 @@ namespace OEAW\Checks;
 
 class JsonHandler {
     
-     protected static $_messages = array(
+    protected static $_messages = array(
         JSON_ERROR_NONE => 'No error has occurred',
         JSON_ERROR_DEPTH => 'The maximum stack depth has been exceeded',
         JSON_ERROR_STATE_MISMATCH => 'Invalid or malformed JSON',
@@ -35,7 +35,8 @@ class JsonHandler {
         throw new RuntimeException(static::$_messages[json_last_error()]);
     }
     
-    
+    public $noError = true;
+
     public function createJsonObjFromFile(string $filepath): array  {
         $data = array();
         if(file_exists($filepath)){
@@ -99,7 +100,7 @@ class JsonHandler {
      * @param string $jsonOutput json, ndjson
      */
     public function writeDataToJsonFile(array $data, string $type, string $dir, string $output = "json"){
-        
+        $this->noError = $this->noError && ($type !== "error");
         $jsonData = $this->generateJsonFileList($data, $output);
         
         if(file_exists($dir.'/'.$type.'.json') === false){

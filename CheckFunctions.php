@@ -28,20 +28,20 @@ class CheckFunctions {
         if (count($dirContent) > 0) {
             $dirContent = $dirContent[0];
             if (strpos($dirContent, '.xml') === false) {
-                die('\n Wrong file inside the signatureDir! \n');
+                die2('\n Wrong file inside the signatureDir! \n');
             }
             $this->mimeTypes = $this->misc->getMimeFromPronom($cfg['signatureDir'] . '/' . $dirContent);
             if (count($this->mimeTypes) < 1) {
-                die('MIME type generation failed!');
+                die2('MIME type generation failed!');
             }
         } else {
-            die("\nThere is no file inside the signature directory!\n");
+            die2("\nThere is no file inside the signature directory!\n");
         }
 
         if ($this->checkTmpDir($cfg['tmpDir'])) {
             $this->tmpDir = $cfg['tmpDir'];
         } else {
-            die();
+            die2('');
         }
     }
 

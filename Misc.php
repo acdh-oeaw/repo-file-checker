@@ -107,7 +107,7 @@ class Misc {
         //check the file
         
         if(!$reader->open( $file )){
-            die("Pronom Droid Signaturefile is not available!");
+            die2("Pronom Droid Signaturefile is not available!");
         }
         
         $doc = new \DOMDocument;
