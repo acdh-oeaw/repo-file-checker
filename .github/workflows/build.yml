@@ -11,8 +11,10 @@ jobs:
     - name: composer update
       run: |
         composer update
-    - name: test
+    - name: prepare config
       run: |
         cp config.ini.sample config.ini
         mkdir MY_REPORTS_DIR MY_TEMP_DIR
+    - name: test
+      run: |
         php -f index.php _testFiles 1
