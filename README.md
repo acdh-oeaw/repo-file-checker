@@ -11,7 +11,6 @@
 		* File Type List
 	- you can also create HTML reports from the generated JSON file 
 
-
 ### Available error checks
 	- Compare the MIME type and the extension (MIMEtypes -> PRONOM: http://www.nationalarchives.gov.uk/aboutapps/pronom)
 	- File name validation (contains spaces or special characters)
@@ -21,50 +20,44 @@
 	- Password protected PDF checking with FPDI
  	- PDF and Zip file size limitation in the config.ini (if we want to avoid PHP memory limit errors)
 		
-		
 ### Used 3rd party libraries		
 		
   - PHP progressBAR (https://github.com/guiguiboy/PHP-CLI-Progress-Bar)
   - BagIT PHP checker (https://github.com/scholarslab/BagItPHP)
   - PDFParser - https://github.com/smalot/pdfparser
   
-  
-### System requirements:  
-  - PHP 7
-  - oPCache or similar
-  - PEAR
+### System requirements:
+
+  - PHP 8
   - PEAR Archive_TAR (https://pear.php.net/package/Archive_Tar/download)
   - PHP file info extension  
   
-  
-  
 ### Using:
-  - copy repository to local drive
-  - rename the config.ini.sample to config.ini
-  - add a temp Directory and a report directory location to the config.ini file. And define a zip and pdf size limit in bytes.
-  - check your signatures directory, if the directory is empty, then please download the latest PRONOM Droid Signature File from here: http://www.nationalarchives.gov.uk/aboutapps/pronom/droid-signature-files.htm
-  - then in command line go to repository and update and install composer components
-  ```
-    composer update
-    composer install
-  ```
-  - Now you can execute the script
-  ```
-    php -f index.php <pathToDirectory> <option>
-  ```
-  - you have the following options:
-	* 0 => check files  (json output) and create file type report (json output)
-	* 1 => check files (json output and html output) and create file type report (json output)
-	* 2 => check files (NDJSON output)
-  An example (on windows CLI):
-  ```
-    php -f index.php R:\ARCHE\staging\data 1
-  ```
+
+  - Obtain the [composer](https://getcomposer.org/) (if you don't have it already).
+  - Run `composer require acdh-oeaw/repo-file-checker`
+  - Create temporary directory and directory for the reports.
+  - Consider downloading the latest PRONOM Droid Signature File from http://www.nationalarchives.gov.uk/aboutapps/pronom/droid-signature-files.htm
+    (you can pass the location of the directory containing the file with the `--signatureDir` command line parameter).
+  - Execute the script
+    ```bash
+    php -f vendor/acdh-oeaw/repo-file-checker/index.php -- --tmpDir <pathToTempDir> --reportDir <pathToReportsDir> <pathToDirectoryToBeProcessed> <outputMode>
+    ```
+    e.g. to run the check on the sample data provided with the package and generate the full output (assuming temporary dir is `MY_TEMP_DIR` and reports dir is `MY_REPORTS_DIR`)
+    ```bash
+    php -f vendor/acdh-oeaw/repo-file-checker/index.php -- --tmpDir MY_TEMP_DIR --reportDir MY_REPORTS_DIR vendor/acdh-oeaw/repo-file-checker/_testFiles 3
+    ```
+  - To get a list of all available parameters run:
+    ```bash
+    php -f vendor/acdh-oeaw/repo-file-checker/index.php -- --help
+    ```
   - if You have bagit files, then please place them into a folder called "bagit" and also please compress your files into a tgz file.
-  - If you get file info errors during the run, and you are using Windows then please copy the "php_fileinfo.dll" from the extensions directory to you local php extensions directory. And please do not forget to add this to your php.ini file extensions part.
+  - If you get file info errors during the run, and you are using Windows then please copy the "php_fileinfo.dll" from the extensions directory to your local php extensions directory.
+    Please don't forget to add this to your php.ini file extensions part.
 
   
 ### Test Files:
+
 You can find files for testing in the _testFiles folder. We have files for the following cases:
   - duplicates -> duplicated files
   - goodFiles -> every file is okay, report will not contain any errors
@@ -85,4 +78,3 @@ You can find files for testing in the _testFiles folder. We have files for the f
 Here you can find an image about the steps:
 https://user-images.githubusercontent.com/20183307/28311284-72ba849a-6baf-11e7-9b93-f06e89cb12c4.png
   
-
