@@ -20,7 +20,6 @@ class CheckFunctions {
         //blacklist
         $bl = $cfg['blackList'];
         $this->blackList = array_map('trim', $bl);
-        print_r($this->blackList);
 
         $dirContent = $this->misc->scan_dir_by_date($cfg['signatureDir']);
         if (count($dirContent) > 0) {
