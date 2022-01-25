@@ -209,25 +209,25 @@ class Checking {
                     $this->html->generateFileTypeListHtml($this->generatedReportDirectory);
                 }
                 if (!file_exists($this->generatedReportDirectory . '/fileTypeList.json')) {
-                    copy('template/fileTypeList.json', $this->generatedReportDirectory . '/fileTypeList.json');
+                    copy(__DIR__ . '/template/fileTypeList.json', $this->generatedReportDirectory . '/fileTypeList.json');
                 }
                 if (!file_exists($this->generatedReportDirectory . '/error.json')) {
-                    copy('template/error.json', $this->generatedReportDirectory . '/error.json');
+                    copy(__DIR__ . '/template/error.json', $this->generatedReportDirectory . '/error.json');
                 }
                 if (!file_exists($this->generatedReportDirectory . '/directories.json')) {
-                    copy('template/directories.json', $this->generatedReportDirectory . '/directories.json');
+                    copy(__DIR__ . '/template/directories.json', $this->generatedReportDirectory . '/directories.json');
                 }
                 if (!file_exists($this->generatedReportDirectory . '/directoryList.json')) {
-                    copy('template/directoryList.json', $this->generatedReportDirectory . '/directoryList.json');
+                    copy(__DIR__ . '/template/directoryList.json', $this->generatedReportDirectory . '/directoryList.json');
                 }
                 if (!file_exists($this->generatedReportDirectory . '/extensions.json')) {
-                    copy('template/extensions.json', $this->generatedReportDirectory . '/extensions.json');
+                    copy(__DIR__ . '/template/extensions.json', $this->generatedReportDirectory . '/extensions.json');
                 }
                 if (!file_exists($this->generatedReportDirectory . '/files.json')) {
-                    copy('template/files.json', $this->generatedReportDirectory . '/files.json');
+                    copy(__DIR__ . '/template/files.json', $this->generatedReportDirectory . '/files.json');
                 }
                 if (!file_exists($this->generatedReportDirectory . '/fileList.json')) {
-                    copy('template/fileList.json', $this->generatedReportDirectory . '/fileList.json');
+                    copy(__DIR__ . '/template/fileList.json', $this->generatedReportDirectory . '/fileList.json');
                 }
             }
 

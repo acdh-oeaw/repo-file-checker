@@ -116,19 +116,19 @@ class GenerateHTMLOutput {
         if(empty($string) || empty($directory) || empty($filename)){
             die2("writeDataToHtmlFile -> missing data");
         }
-        copy('template/css/style.css', $directory.'/css/style.css');
-        copy('template/js/jquery.js', $directory.'/js/jquery.js');
-        copy('template/js/jstree.min.js', $directory.'/js/jstree.min.js');        
-        copy('template/css/jquery.dataTables.css', $directory.'/css/jquery.dataTables.css');
-        copy('template/js/jquery.dataTables.js', $directory.'/js/jquery.dataTables.js');
-        copy('template/js/helper.js', $directory.'/js/helper.js');
-        copy('template/css/jstreecss.css', $directory.'/css/jstreecss.css');
-        copy('template/css/throbber.gif', $directory.'/css/throbber.gif');
-        copy('template/css/40px.png', $directory.'/css/40px.png');
-        copy('template/css/32px.png', $directory.'/css/32px.png');
-        copy('template/.htaccess', $directory.'/.htaccess');
+        copy(__DIR__ . '/template/css/style.css', $directory.'/css/style.css');
+        copy(__DIR__ . '/template/js/jquery.js', $directory.'/js/jquery.js');
+        copy(__DIR__ . '/template/js/jstree.min.js', $directory.'/js/jstree.min.js');        
+        copy(__DIR__ . '/template/css/jquery.dataTables.css', $directory.'/css/jquery.dataTables.css');
+        copy(__DIR__ . '/template/js/jquery.dataTables.js', $directory.'/js/jquery.dataTables.js');
+        copy(__DIR__ . '/template/js/helper.js', $directory.'/js/helper.js');
+        copy(__DIR__ . '/template/css/jstreecss.css', $directory.'/css/jstreecss.css');
+        copy(__DIR__ . '/template/css/throbber.gif', $directory.'/css/throbber.gif');
+        copy(__DIR__ . '/template/css/40px.png', $directory.'/css/40px.png');
+        copy(__DIR__ . '/template/css/32px.png', $directory.'/css/32px.png');
+        copy(__DIR__ . '/template/.htaccess', $directory.'/.htaccess');
 
-        $template=file_get_contents('template/template.html');
+        $template=file_get_contents(__DIR__ . '/template/template.html');
         $tpl=str_replace("{html_file_content}", $string,$template);
         file_put_contents($directory.'/'.$filename.'.html', $tpl.PHP_EOL , FILE_APPEND | LOCK_EX);
     }
