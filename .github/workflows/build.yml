@@ -1,0 +1,18 @@
+name: docker
+
+on: push
+
+jobs:
+  phpunit:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    #- uses: mxschmitt/action-tmate@v3
+    - name: composer update
+      run: |
+        composer update
+    - name: test
+      run: |
+        cp config.ini.sample config.ini
+        mkdir MY_REPORTS_DIR MY_TEMP_DIR
+        php -f index.php _testFiles 1
