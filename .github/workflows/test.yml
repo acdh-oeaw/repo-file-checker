@@ -16,7 +16,7 @@ jobs:
         path: ~/.cvdupdate
         key: constant
     - name: refresh AV database
-      run: python3 -m pip install --user cvdupdate && cvd update
+      run: python3 -m pip install --user cvdupdate && cvd update && echo "foo"
     - name: composer
       run: composer update --no-dev -o 
     - name: test
