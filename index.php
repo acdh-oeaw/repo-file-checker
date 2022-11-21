@@ -1,3 +1,4 @@
+#!/usr/bin/php
 <?php
 
 use OEAW\Checks\Checking as CH;

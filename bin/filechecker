@@ -1,0 +1,22 @@
+#!/bin/bash
+BDIR=`dirname $0`
+BDIR=`realpath "$BDIR"`
+COMPOSER_DIR="$BDIR/.."
+
+while [ ! -f "$COMPOSER_DIR/vendor/autoload.php"  ] ; do
+    COMPOSER_DIR=`realpath "$COMPOSER_DIR/.."`
+done
+COMPOSER_DIR=`realpath "$COMPOSER_DIR"`
+export COMPOSER_DIR
+if [ -d "$COMPOSER_DIR/vendor/acdh-oeaw/arche-ingest" ] ; then
+    BDIR="$COMPOSER_DIR/vendor/acdh-oeaw/arche-ingest"
+else
+    BDIR="$COMPOSER_DIR"
+fi
+
+if [ "$#" == "0" ] ; then
+    php -f "$BDIR/index.php" -- -h
+else
+    php -f "$BDIR/index.php" -- $@
+fi
+
