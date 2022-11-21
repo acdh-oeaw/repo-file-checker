@@ -77,6 +77,19 @@ Remarks:
   python3 -m pip install --user cvdupdate
   cvd update
   ```
+  * If you're running it inside a CI/CD workflow and don't want to be a bad guy causing unnecessary load on the server storing the signature, store the downloaded database in a cache,
+    e.g. on Github Actions you may perform the db update using following build steps:
+    ```yaml
+    - name: cache AV database
+      id: avdb
+      uses: actions/cache@v3
+      with:
+        path: .cvdupdate
+        key: constant
+    - name: refresh AV database
+      run: python3 -m pip install --user cvdupdate && cvd update
+    ```
+    
 * Run a container with the filechecker mounting input and output directories from host:
   ```bash
   docker run \
