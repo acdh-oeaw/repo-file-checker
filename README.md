@@ -84,7 +84,7 @@ Remarks:
       id: avdb
       uses: actions/cache@v3
       with:
-        path: .cvdupdate
+        path: ~/.cvdupdate
         key: constant
     - name: refresh AV database
       run: python3 -m pip install --user cvdupdate && cvd update
