@@ -8,8 +8,8 @@ while [ ! -f "$COMPOSER_DIR/vendor/autoload.php"  ] ; do
 done
 COMPOSER_DIR=`realpath "$COMPOSER_DIR"`
 export COMPOSER_DIR
-if [ -d "$COMPOSER_DIR/vendor/acdh-oeaw/arche-ingest" ] ; then
-    BDIR="$COMPOSER_DIR/vendor/acdh-oeaw/arche-ingest"
+if [ -d "$COMPOSER_DIR/vendor/acdh-oeaw/repo-file-checker" ] ; then
+    BDIR="$COMPOSER_DIR/vendor/acdh-oeaw/repo-file-checker"
 else
     BDIR="$COMPOSER_DIR"
 fi

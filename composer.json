@@ -13,6 +13,7 @@
     "require": {
         "php": ">=8.0 <8.2",
         "ext-fileinfo": "*",
+        "ext-zip": "*",
         "guiguiboy/php-cli-progress-bar": "0.0.4",
         "scholarslab/bagit": "0.3.0",
         "smalot/pdfparser": "*",
