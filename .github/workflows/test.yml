@@ -20,5 +20,8 @@ jobs:
     - name: composer
       run: composer update --no-dev -o 
     - name: test
-      run: mkdir reports && bin/arche-filechecker --tmpDir /tmp --reportDir reports _testFiles 3 || 0
+      # the filechecker should have non-zero error code
+      run: |
+        mkdir reports && bin/arche-filechecker --tmpDir /tmp --reportDir reports _testFiles 3
+        if [ "$?" == 0 ] ; then exit 1; fi
 
