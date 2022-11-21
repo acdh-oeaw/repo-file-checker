@@ -9,14 +9,6 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     #- uses: mxschmitt/action-tmate@v3
-    - name: cache AV database
-      id: avdb
-      uses: actions/cache@v3
-      with:
-        path: ~/.cvdupdate
-        key: constant
-    - name: refresh AV database
-      run: python3 -m pip install --user cvdupdate && cvd update && echo "foo"
     - name: composer
       run: composer update --no-dev -o 
     - name: test
