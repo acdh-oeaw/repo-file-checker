@@ -89,7 +89,7 @@ Remarks:
   e.g.
   ```bash
   docker run \
-    --rm \
+    --rm --user $UID \
     -v MY_REPORTS_DIR:/reports \
     -v MY_DATA_DIR:/data \
     -v ~/.cvdupdate/database/:/var/lib/clamav \
@@ -120,7 +120,7 @@ Remarks:
       # virus check
       docker exec filechecker clamdscan --infected /data
       # filechecker check
-      docker exec filechecker /opt/filechecker/bin/arche-filechecker --tmpDir /tmp --reportDir /reports /data {mode}
+      docker exec --user $UID filechecker /opt/filechecker/bin/arche-filechecker --tmpDir /tmp --reportDir /reports /data {mode}
       ```
 
 # Test Files:
