@@ -20,5 +20,5 @@ jobs:
     - name: composer
       run: composer update --no-dev -o 
     - name: test
-      run: mkdir reports && bin/arche-filechecker --tmpDir /tmp --reportDir reports _testFiles 3
+      run: mkdir reports && bin/arche-filechecker --tmpDir /tmp --reportDir reports _testFiles 3 || 0
 
