@@ -3,8 +3,8 @@ if [ -z "$DAEMONIZE" ] ; then
     echo "### Performing virus scan" &&\
     clamscan --recursive --infected /data &&\
     echo "### Running the filechecker" &&\
-    php -f /opt/filechecker/index.php -- --tmpDir /tmp --reportDir /reports /data "$@"
-    echo "### Ended"
+    php -f /opt/filechecker/index.php -- --tmpDir /tmp --reportDir /reports /data "$@" &&\
+    echo "### Ended successfully"
 else
     echo "### Running antivirus in a daemon mode"
     echo "###"

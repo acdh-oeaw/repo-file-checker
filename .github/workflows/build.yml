@@ -8,7 +8,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    #- uses: mxschmitt/action-tmate@v3
     - name: build
       run: |
         docker build -t acdhch/arche-filechecker:latest --label "buildUrl=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" .
