@@ -8,6 +8,10 @@
         {
             "name": "Norbert Czirjak",
             "email": "norbert.czirjak@oeaw.ac.at"
+        },
+        {
+            "name": "Mateusz Żółtak",
+            "email": "mzoltak@oeaw.ac.at"
         }
     ],
     "require": {
@@ -21,9 +25,14 @@
         "pear/archive_tar": "^1.4.14"
     },
     "autoload": {
-        "psr-4": {"OEAW\\Checks\\": "./"}
+        "psr-4": {
+            "acdhOeaw\\": "src/acdhOeaw"
+        }
     },
     "bin": [
         "bin/arche-filechecker"
-    ]
+    ],
+    "require-dev": {
+        "phpstan/phpstan": "^1.9"
+    }
 }
