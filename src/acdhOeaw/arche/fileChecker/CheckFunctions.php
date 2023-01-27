@@ -65,12 +65,6 @@ class CheckFunctions {
 
     /**
      * 
-     * @var array<string>
-     */
-    private array $blackList = [];
-
-    /**
-     * 
      * @var array<string, array<string>>
      */
     private array $mimeTypes = [];
@@ -87,10 +81,6 @@ class CheckFunctions {
      * @param array<string, mixed> $cfg
      */
     public function __construct(array $cfg) {
-        //blacklist
-        $bl              = $cfg['blackList'];
-        $this->blackList = array_map(fn($x) => mb_strtolower(trim($x)), $bl);
-
         $files = scandir($cfg['signatureDir']);
         $files = array_filter($files, fn($x) => str_ends_with(mb_strtolower($x), '.xml'));
         if (count($files) === 0) {
@@ -176,16 +166,6 @@ class CheckFunctions {
      */
     public function checkFileNameValidity(string $filename): bool {
         return preg_match('/[^-A-Za-z0-9_().]/', $filename) === 0;
-    }
-
-    /**
-     * 
-     * Check the blacklisted elements
-     * 
-     * @param string $extension
-     */
-    public function checkBlackListFile(string $extension): bool {
-        return !in_array(mb_strtolower($extension), $this->blackList);
     }
 
     /**

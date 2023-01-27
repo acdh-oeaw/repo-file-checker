@@ -137,15 +137,16 @@ class FileChecker {
             $filenameDuplicates[$entryStd] = $entry;
 
             $fileInfo->save($this->checkOutput);
+            $this->noErrors = $this->noErrors && count($fileInfo->errors) === 0;
 
             $pbFL->advance();
             echo "\n";
         }
+        $this->noErrors = $this->noErrors && count($dirInfo->errors) === 0;
     }
 
     private function checkFile(FileInfo $fileInfo): void {
         $fileInfo->assert($fileInfo->type === 'file', "Wrong file type");
-        $fileInfo->assert($this->chkFunc->checkBlackListFile($fileInfo->extension), "Blacklisted extension");
         $fileInfo->assert($this->chkFunc->checkFileNameValidity($fileInfo->filename), "Filename contains invalid characters");
         $fileInfo->assert($this->chkFunc->checkBom($fileInfo->path), 'File contains a Byte Order Mark');
         $fileInfo->appendErrors($this->chkFunc->checkMimeTypes($fileInfo->extension, $fileInfo->mime));
@@ -159,9 +160,7 @@ class FileChecker {
         // zip checks
         $isZip = in_array($fileInfo->extension, ['zip', 'gzip', '7zip']) ||
             in_array($fileInfo->mime, ['application/zip', 'application/gzip', 'application/7zip']);
-        if ($isZip && $fileInfo->size > $this->cfg['zipSize']) {
-            $fileInfo->assert(false, 'ZIP too large');
-        } elseif ($isZip) {
+        if ($isZip) {
             $fileInfo->appendErrors($this->chkFunc->checkZipFile($fileInfo->path));
         }
         //check the PDF Files
