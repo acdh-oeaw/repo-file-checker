@@ -235,7 +235,7 @@ class FileChecker {
             fwrite($fh, ";\n");
 
             $dict = [
-                '{{title}}' => 'Report for ' . $this->checkDir,
+                '{{title}}' => 'Report for ' . $this->checkDir . ' (' . date('Y-m-d H:i') . ')',
             ];
             fwrite($fh, str_replace(array_keys($dict), array_values($dict), $tmpl[1]));
             fclose($fh);
