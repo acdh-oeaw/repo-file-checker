@@ -172,9 +172,9 @@ class FileChecker {
             $fileInfo->appendErrors($this->chkFunc->checkPdfFile($fileInfo->path));
         }
         //check the RAR files
-        $fileInfo->assert($fileInfo->extension == "rar" || $fileInfo->mime == "application/rar", "RAR file - can't process");
+        $fileInfo->assert(!($fileInfo->extension === "rar" || $fileInfo->mime === "application/rar"), "RAR file - can't process");
         //check PW protected XLSX, DOCX
-        $fileInfo->assert(in_array($fileInfo->extension, ["xlsx", "docx"]) && $fileInfo->mime === "application/CDFV2-encrypted", "Encrypted DOCS/XLSX");
+        $fileInfo->assert(!(in_array($fileInfo->extension, ["xlsx", "docx"]) && $fileInfo->mime === "application/CDFV2-encrypted"), "Encrypted DOCS/XLSX");
         //check the bagit files
         if (strpos(strtolower($fileInfo->directory), 'bagit') !== false) {
             $fileInfo->appendErrors($this->chkFunc->checkBagitFile($fileInfo->path));

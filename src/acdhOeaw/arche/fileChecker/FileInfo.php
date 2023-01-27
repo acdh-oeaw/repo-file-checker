@@ -111,7 +111,7 @@ class FileInfo {
     public function assert(bool $test, string $errorType = '',
                            string $errorMessage = ''): void {
         if ($test === false) {
-            $this->errors[] = new Error('ERROR', $errorType, $errorMessage);
+            $this->errors[] = new Error(Error::SEVERITY_ERROR, $errorType, $errorMessage);
         }
     }
 

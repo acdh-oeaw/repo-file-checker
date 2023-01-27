@@ -52,12 +52,10 @@ class CheckFunctions {
         foreach ($xml->FileFormatCollection->FileFormat as $i) {
             $mime = mb_strtolower($i->attributes()->MIMEType[0] ?? '');
             if (!empty($mime)) {
+                $mime = array_map(fn($x) => trim($x), explode(',', $mime));
                 foreach ($i->Extension as $ext) {
-                    $ext = mb_strtolower((string) $ext);
-                    if (!isset($extArray[$ext])) {
-                        $extArray[$ext] = [];
-                    }
-                    $extArray[$ext][] = $mime;
+                    $ext            = mb_strtolower((string) $ext);
+                    $extArray[$ext] = array_merge($extArray[$ext] ?? [], $mime);
                 }
             }
         }
@@ -187,7 +185,7 @@ class CheckFunctions {
      * @param string $extension
      */
     public function checkBlackListFile(string $extension): bool {
-        return in_array(mb_strtolower($extension), $this->blackList);
+        return !in_array(mb_strtolower($extension), $this->blackList);
     }
 
     /**
@@ -197,8 +195,9 @@ class CheckFunctions {
      * 
      */
     public function checkMimeTypes(string $extension, string $mime): ?Error {
+        $mime      = mb_strtolower($mime);
         $validMime = $this->mimeTypes[mb_strtolower($extension)] ?? [];
-        return in_array(mb_strtolower($mime), $validMime) ? null : new Error(Error::SEVERITY_ERROR, "Extension doesn't match MIME type", "Extension: $extension, MIME type: $mime, allowed MIME types: " . implode(', ', $validMime));
+        return in_array($mime, $validMime) ? null : new Error(Error::SEVERITY_ERROR, "Extension doesn't match MIME type", "Extension: $extension, MIME type: $mime, allowed MIME types: " . implode(', ', $validMime));
     }
 
     /**
