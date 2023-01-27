@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8" />	
+        <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+        <link rel="stylesheet" href="css/style.css">
+        <title>ÖAW - REPO FILE CHECKER REPORT</title>
+        <meta content='width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0' name='viewport' />
+        <meta name="viewport" content="width=device-width" />
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js" integrity="sha512-jGsMH83oKe9asCpkOVkBnUrDDTp8wl+adkB2D+//JtlxO4SrLoJdhbOysIFQJloQFD+C4Fl1rMsQZF76JjV0eQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/css/bootstrap.min.css" integrity="sha512-rt/SrQ4UNIaGfDyEXZtNcyWvQeOq0QLygHluFQcSjaGB04IxWhal71tKuzP6K8eYXYB6vJV4pHkXcmFGGQ1/0w==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/4.6.2/js/bootstrap.bundle.min.js" integrity="sha512-igl8WEUuas9k5dtnhKqyyld6TzzRjvMqLC79jkgT3z02FvJyHAuUtyemm/P/jYSne1xwFI06ezQxEwweaiV7VA==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+
+        <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/dt-1.13.1/datatables.min.css"/>
+        <script type="text/javascript" src="https://cdn.datatables.net/v/dt/dt-1.13.1/datatables.min.js"></script>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.14/jstree.min.js" integrity="sha512-OQ2by9SrJBwcXaeYmkG2t6FVZiwpyRtFar2VvULjuq5OjVpJLwsUHuNzN9PClqEJAYsWsRPSb4TTfriZzPGiow==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.14/themes/default/style.min.css" />
+
+        <script type="text/javascript" language="javascript">
+            /*DATA*/
+
+            function destroy() {
+                if (datatable !== null) {
+                    datatable.destroy();
+                    jQuery('#datatable').html('');
+                    datatable = null;
+                }
+                if (treeview !== null) {
+                    treeview.destroy();
+                    jQuery('#treeview').html('');
+                    treeview = null;
+                }
+                jQuery('#treeviewSearch').hide();
+            }
+
+            function humanFileSize(size) {
+                var i = Math.floor(Math.log(size) / Math.log(1024));
+                return (size / Math.pow(1024, i)).toFixed(2) * 1 + ' ' + ['B', 'kB', 'MB', 'GB', 'TB'][i];
+            }
+
+            function initTable(data) {
+                const sizeCols = ['size', 'totalSize', 'minSize', 'maxSize'];
+                const rightCols = ['size', 'totalSize', 'minSize', 'maxSize', 'count', 'extension'];
+                destroy();
+                var cols = Object.keys(data[0]);
+                cols = cols.map(function (x) {
+                    var def = {title: x, data: x};
+                    if (sizeCols.indexOf(x) >= 0) {
+                        def['render'] = function (data, type, row, meta) {
+                            return type === 'display' ? humanFileSize(data) : data;
+                        };
+                    } else if (x === 'count') {
+                        def['render'] = function (data, type, row, meta) {
+                            return type === 'display' ? data + ' file(s)' : data;
+                        };
+                    } else if (x === 'valid') {
+                        def['render'] = function (data, type, row, meta) {
+                            return data ? 'yes' : 'no';
+                        };
+                    }
+                    if (rightCols.indexOf(x) >= 0) {
+                        def['className'] = 'dt-right';
+                    }
+                    return def;
+                });
+                //console.log({'cols': cols});
+                datatable = jQuery('#datatable').DataTable({
+                    data: data,
+                    columns: cols
+                });
+            }
+
+            function initTree(data) {
+                destroy();
+                treeview = jQuery('#treeview').jstree({
+                    core: {
+                        data: data
+                    },
+                    plugins: ['search'],
+                    search: {
+                        show_only_matches: true,
+                        show_only_matches_children: true
+                    }
+
+                }).jstree(true);
+                jQuery('#treeviewSearch').show();
+            }
+
+            function updateStats(container, element, key) {
+                var tmp = container[element[key]];
+                if (tmp) {
+                    tmp.count++;
+                    tmp.totalSize += element.size;
+                    tmp.minSize = Math.min(tmp.minSize, element.size);
+                    tmp.maxSize = Math.max(tmp.maxSize, element.size);
+                } else {
+                    tmp = {};
+                    tmp[key] = element[key];
+                    tmp.count = 1;
+                    tmp.totalSize = element.size;
+                    tmp.minSize = element.size;
+                    tmp.maxSize = element.size;
+                    container[element[key]] = tmp;
+                }
+            }
+
+            function aggFilesListByKey(fileList, key) {
+                aggData = {};
+                for (var i = 0; i < fileList.length; i++) {
+                    var file = fileList[i];
+                    updateStats(aggData, file, key);
+                }
+                return Object.values(aggData);
+            }
+
+            function directoryTreeFromFiles(fileList) {
+                var tree = {};
+                var i;
+                for (i = 0; i < fileList.length; i++) {
+                    var file = fileList[i];
+                    if (file.type !== 'file') {
+                        continue;
+                    }
+                    var tmp = tree[file.directory];
+                    if (!tmp) {
+                        tmp = {
+                            text: file.directory,
+                            byMime: {},
+                            byExtension: {},
+                            filesCount: 0,
+                            totalSize: 0
+                        };
+                        tree[file.directory] = tmp;
+                    }
+                    tmp.filesCount++;
+                    tmp.totalSize += file.size;
+                    updateStats(tmp.byMime, file, 'mime');
+                    updateStats(tmp.byExtension, file, 'extension');
+                }
+                tree = Object.values(tree);
+                for (i = 0; i < tree.length; i++) {
+                    var dir = tree[i];
+                    dir.children = [
+                        {text: 'by MIME type', children: asTree(Object.values(dir.byMime), 'mime')},
+                        {text: 'by extension', children: asTree(Object.values(dir.byExtension), 'extension')},
+                        {icon: 'jstree-file', text: 'files count: ' + dir.filesCount + ' file(s)'},
+                        {icon: 'jstree-file', text: 'total size: ' + humanFileSize(dir.totalSize)},
+                    ];
+                }
+                return tree;
+            }
+
+            function asTree(data, key) {
+                var tree = [];
+                for (var i = 0; i < data.length; i++) {
+                    var item = data[i];
+                    tree.push({
+                        text: item[key],
+                        children: [
+                            {icon: 'jstree-file', text: 'files count: ' + item.count + ' file(s)'},
+                            {icon: 'jstree-file', text: 'total size: ' + humanFileSize(item.totalSize)},
+                            {icon: 'jstree-file', text: 'min size: ' + humanFileSize(item.minSize)},
+                            {icon: 'jstree-file', text: 'max size: ' + humanFileSize(item.maxSize)},
+                        ]
+                    });
+                }
+                return tree;
+            }
+
+            var datatable = null;
+            var treeview = null;
+
+            $(document).ready(function () {
+                var treeSearchTimeout = false;
+                $('#treeviewSearch').keyup(function () {
+                    if (treeSearchTimeout) {
+                        clearTimeout(treeSearchTimeout);
+                    }
+                    treeSearchTimeout = setTimeout(function () {
+                        if (treeview) {
+                            treeview.search($('#treeviewSearch').val());
+                        }
+                    }, 250);
+                });
+
+                var directoryTree = directoryTreeFromFiles(fileList);
+                var extTypeList = aggFilesListByKey(fileList, 'extension');
+                var extTypeTree = asTree(extTypeList, 'extension');
+                var mimeTypeList = aggFilesListByKey(fileList, 'mime');
+                var mimeTypeTree = asTree(mimeTypeList, 'mime');
+
+                jQuery('#errorsPill').click(function () {
+                    initTable(errorList);
+                });
+                jQuery('#dirsTablePill').click(function () {
+                    initTable(directoryList);
+                });
+                jQuery('#dirsTreePill').click(function () {
+                    initTree(directoryTree);
+                });
+                jQuery('#filesPill').click(function () {
+                    initTable(fileList);
+                });
+                jQuery('#extTablePill').click(function () {
+                    initTable(extTypeList);
+                });
+                jQuery('#extTreePill').click(function () {
+                    initTree(extTypeTree);
+                });
+                jQuery('#mimeTablePill').click(function () {
+                    initTable(mimeTypeList);
+                });
+                jQuery('#mimeTreePill').click(function () {
+                    initTree(mimeTypeTree);
+                });
+                jQuery('#errorsPill').click();
+            });
+        </script>
+    </head>
+    <body>
+        <nav class="navbar bg-light fixed-top">
+            <span class="navbar-text"><h2>{{title}}</h2></span>
+        </nav>
+        <div class="container-fluid" style="margin-top: 100px;">
+            <div class="row">
+                <div class="col-xl-2 col-lg-3">
+                    <div class="nav flex-column nav-pills" id="navbar" role="tablist" aria-orientation="vertical">
+                        <button type="button" class="nav-link active" id="errorsPill" data-toggle="pill">Errors</button>
+                        <button type="button" class="nav-link" id="dirsTablePill" data-toggle="pill">Directories (table)</button>
+                        <button type="button" class="nav-link" id="dirsTreePill" data-toggle="pill">Directories (tree)</button>
+                        <button type="button" class="nav-link" id="filesPill" data-toggle="pill">Files (table)</button>
+                        <button type="button" class="nav-link" id="extTablePill" data-toggle="pill">File types by extension (table)</button>
+                        <button type="button" class="nav-link" id="extTreePill" data-toggle="pill">File types by extension (tree)</button>
+                        <button type="button" class="nav-link" id="mimeTablePill" data-toggle="pill">File types by mime (table)</button>
+                        <button type="button" class="nav-link" id="mimeTreePill" data-toggle="pill">File types by mime (tree)</button>
+                    </div>
+                </div>
+                <div class="col-xl-10 col-lg-9">
+                    <table id="datatable" class="row-border stripe hover compact" style="width:100%"></table>
+                    <form>
+                        <input type="text" id="treeviewSearch" placeholder="search" style="min-width: 400px;"/>
+                        <div id="treeview"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </body>
+</html>

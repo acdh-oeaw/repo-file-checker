@@ -1,11 +1,69 @@
 <?php
 
+/*
+ * The MIT License
+ *
+ * Copyright 2019 Austrian Centre for Digital Humanities.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 namespace acdhOeaw\arche\fileChecker;
 
-use RuntimeException;
-use acdhOeaw\arche\fileChecker\Misc as MC;
+use whikloj\BagItTools\Bag;
 
 class CheckFunctions {
+
+    const HASH_FALLBACK = 'sha1';
+    const HASH_DEFAULT  = 'xxh128';
+
+    /**
+     * Process the pronom xml for the MIMEtypes
+     * 
+     * @param string $file
+     * @return array<string>
+     */
+    static private function getMimeFromPronom(string $file): array {
+        $xml = simplexml_load_file($file);
+        if ($xml === false) {
+            FileChecker::die("Failed to read signatures file $file");
+        }
+        $extArray = [];
+
+        // - jeden format może mieć wiele Extension
+        // - różne formaty mogą zgłaszać takie samo Extension
+
+        foreach ($xml->FileFormatCollection->FileFormat as $i) {
+            $mime = mb_strtolower($i->attributes()->MIMEType[0] ?? '');
+            if (!empty($mime)) {
+                foreach ($i->Extension as $ext) {
+                    $ext = mb_strtolower((string) $ext);
+                    if (!isset($extArray[$ext])) {
+                        $extArray[$ext] = [];
+                    }
+                    $extArray[$ext][] = $mime;
+                }
+            }
+        }
+        $extArray = array_map(fn($x) => array_unique($x), $extArray);
+        return $extArray;
+    }
 
     /**
      * 
@@ -15,10 +73,16 @@ class CheckFunctions {
 
     /**
      * 
-     * @var array<string>
+     * @var array<string, array<string>>
      */
     private array $mimeTypes = [];
-    private string $tmpDir;
+    private string $hashAlgo;
+
+    /**
+     * 
+     * @var array<int, array<string>>
+     */
+    private array $bom = [];
 
     /**
      * 
@@ -32,16 +96,40 @@ class CheckFunctions {
         $files = scandir($cfg['signatureDir']);
         $files = array_filter($files, fn($x) => str_ends_with(mb_strtolower($x), '.xml'));
         if (count($files) === 0) {
-            MC::die("\nThere is no file inside the signature directory!\n");
+            FileChecker::die("Can't read signatures file - the signature directory is empty\n");
         }
         sort($files);
-        $this->mimeTypes = MC::getMimeFromPronom($cfg['signatureDir'] . '/' . end($files));
+        $this->mimeTypes = self::getMimeFromPronom($cfg['signatureDir'] . '/' . end($files));
         if (count($this->mimeTypes) === 0) {
-            MC::die('MIME type generation failed!');
+            FileChecker::die("Reading signatures file failed");
         }
 
-        $this->tmpDir = $cfg['tmpDir'];
-        MC::checkTmpDir($this->tmpDir, 'tmpDir');
+        $this->hashAlgo = $cfg['hashAlgo'] ?? self::HASH_DEFAULT;
+        if (!in_array($this->hashAlgo, hash_algos())) {
+            echo "Hashing algorithm $hash->algo unavailable, falling back to " . self::HASH_FALLBACK . "\n\n";
+            $this->hashAlgo = self::HASH_FALLBACK;
+        }
+
+        // https://en.wikipedia.org/wiki/Byte_order_mark#Byte_order_marks_by_encoding
+        $this->bom = [
+            2 => [
+                chr(254) . chr(255), // UTF-16 BE
+                chr(255) . chr(254), // UTF-16 BE
+            ],
+            3 => [
+                chr(239) . chr(187) . chr(191), // UTF-8
+                chr(43) . chr(47) . chr(118), // UTF-7
+                chr(247) . chr(100) . chr(76), // UTF-1
+                chr(14) . chr(254) . chr(255), // SCSU
+                chr(251) . chr(238) . chr(40), // BOCU-1
+            ],
+            4 => [
+                chr(0) . chr(0) . chr(254) . chr(255), // UTF-32 BE
+                chr(254) . chr(255) . chr(0) . chr(0), // UTF-32 LE
+                chr(221) . chr(115) . chr(102) . chr(115), // UTF-EBCDIC
+                chr(132) . chr(49) . chr(149) . chr(51), // GB18030
+            ],
+        ];
     }
 
     /**
@@ -49,19 +137,25 @@ class CheckFunctions {
      * Checks the bagit file, and if there is an error then add it to the errors variable
      * 
      * @param string $filename
-     * @return array<string, mixed>
+     * @return array<Error>
      */
-    public function checkBagitFile(string $filename): array {
-        $result = [];
-        // use an existing bag
-        $bag    = new \BagIt($filename);
-        $bag->validate();
-        if (is_array($bag->getBagErrors())) {
-            if (count($bag->getBagErrors()) > 0) {
-                $result[$filename] = $bag->getBagErrors();
-            }
+    public function checkBagitFile(string $filename, bool $verbose = true): array {
+        $bag   = Bag::load($filename);
+        $valid = $bag->isValid();
+
+        $issues = $bag->getErrors();
+        if ($verbose) {
+            $issues = array_merge($issues, $bag->getWarnings());
         }
-        return $result;
+
+        $dir      = dirname($filename);
+        $filename = basename($filename);
+        $issues   = array_map(
+            fn($x) => new Error('ERROR', 'BagIt_Error', $x['file'] . ': ' . $x['message']),
+                                $issues
+        );
+
+        return $issues;
     }
 
     /**
@@ -71,9 +165,8 @@ class CheckFunctions {
      * @param string $dir
      * @return bool
      */
-    public function checkDirectoryNameValidity(string $dir): bool {
-        $dir = basename($dir);
-        return preg_match("#^(?:[a-zA-Z]:|\.\.?)?(?:[\\\/][a-zA-Z0-9_.\'\"-]*)+$#", $dir) === 1;
+    public function checkDirectoryNameValidity(string $dirname): bool {
+        return preg_match('/[^-A-Za-z0-9_().]/', $dirname) === 0;
     }
 
     /**
@@ -84,7 +177,7 @@ class CheckFunctions {
      * @return bool : true
      */
     public function checkFileNameValidity(string $filename): bool {
-        return preg_match('/[^A-Za-z0-9\_\(\)\-\.]/', $filename) === 0;
+        return preg_match('/[^-A-Za-z0-9_().]/', $filename) === 0;
     }
 
     /**
@@ -106,8 +199,9 @@ class CheckFunctions {
      * @param string $type
      * @return bool
      */
-    public function checkMimeTypes(string $extension, string $type): bool {
-        return in_array(mb_strtolower($extension), $this->mimeTypes);
+    public function checkMimeTypes(string $extension, string $mime): bool {
+        $validMime = $this->mimeTypes[mb_strtolower($extension)] ?? [];
+        return in_array(mb_strtolower($mime), $validMime);
     }
 
     /**
@@ -118,54 +212,13 @@ class CheckFunctions {
      * @return Error|null
      */
     public function checkPdfFile(string $file): ?Error {
-
         try {
             $parser = new \Smalot\PdfParser\Parser();
             $parser->parseFile($file);
         } catch (\Exception $ex) {
-            return new Error(dirname($file), basename($file), "PDF error", $ex->getMessage());
+            return new Error('ERROR', "PDF error", $ex->getMessage());
         }
         return null;
-    }
-
-    /**
-     * 
-     * Check the file and/or size duplications
-     * 
-     * @param array<string, mixed> $data
-     * @return array<string, mixed>
-     */
-    public function checkFileDuplications(array $data): array {
-        $result = [];
-        foreach ($data as $current_key => $current_array) {
-            foreach ($data as $search_key => $search_array) {
-                if ($search_array['filename'] == $current_array['filename']) {
-                    if ($search_key != $current_key) {
-                        if ($current_array['size'] == $search_array['size']) {
-                            $result["Duplicate_File_And_Size"][$current_array['filename']][] = $search_array['dir'];
-                        } else {
-                            $result["Duplicate_File"][$current_array['filename']][] = $search_array['dir'];
-                        }
-                    }
-                }
-            }
-        }
-
-        $return = [];
-        if (isset($result['Duplicate_File_And_Size'])) {
-            foreach ($result['Duplicate_File_And_Size'] as $k => $v) {
-                $return['Duplicate_File_And_Size'][$k] = array_unique($v);
-                $return['Duplicate_File_And_Size'][$k] = array_values($return['Duplicate_File_And_Size'][$k]);
-            }
-        }
-        if (isset($result['Duplicate_File'])) {
-            foreach ($result['Duplicate_File'] as $k => $v) {
-                $return['Duplicate_File'][$k] = array_unique($v);
-                $return['Duplicate_File'][$k] = array_values($return['Duplicate_File'][$k]);
-            }
-        }
-
-        return $return;
     }
 
     /**
@@ -178,97 +231,48 @@ class CheckFunctions {
     public function checkZipFile(string $zipFile): ?Error {
         $za = new \ZipArchive();
         if ($za->open($zipFile) !== TRUE) {
-            return new Error(dirname($zipFile), basename($zipFile), "Zip_Open_Error");
-        } 
+            return new Error('ERROR', "Zip_Open_Error");
+        }
         $filesCount = $za->count();
-        for($i = 0; $i < $filesCount; $i++) {
+        for ($i = 0; $i < $filesCount; $i++) {
             $res = $za->getStream($za->statIndex($i)['name']);
             if ($res === false) {
-                return new Error(dirname($zipFile), basename($zipFile), "Zip_Error", $za->getStatusString());
+                return new Error('ERROR', "Zip_Error", $za->getStatusString());
             }
         }
         return null;
     }
 
-    /**
-     * 
-     * 
-     * Generate the data to for the directory tree view
-     * based on the filetypelist.json
-     * 
-     * @param array<string, array<string, mixed>> $flat
-     * @return array<array<string, mixed>>
-     */
-    public function convertDirectoriesToTree(array $flat): array {
-        $indexed = [];
-        $arrKeys = array_keys($flat);
-        for ($x = 0; $x <= count($flat) - 1; $x++) {
-            $indexed[$x]['text'] = $arrKeys[$x];
-
-            if (isset($flat[$arrKeys[$x]]['extension'])) {
-
-                if (count($flat[$arrKeys[$x]]['extension']) > 0) {
-                    $i        = 0;
-                    $children = [];
-                    foreach ($flat[$arrKeys[$x]]['extension'] as $k => $v) {
-
-                        $children[$i]['text'] = $k;
-                        if (isset($v["sumSize"])) {
-                            $children[$i]['children'][] = array("icon" => "jstree-file",
-                                "text" => "SumSize: " . MC::formatSizeUnits($v["sumSize"]['sum']));
-                        }
-                        if (isset($v["fileCount"])) {
-                            $children[$i]['children'][] = array("icon" => "jstree-file",
-                                "text" => "fileCount: " . $v["fileCount"]['fileCount'] . " file(s)");
-                        }
-                        if (isset($v["minSize"])) {
-                            $children[$i]['children'][] = array("icon" => "jstree-file",
-                                "text" => "MinSize: " . MC::formatSizeUnits($v["minSize"]['min']));
-                        }
-                        if (isset($v["maxSize"])) {
-                            $children[$i]['children'][] = array("icon" => "jstree-file",
-                                "text" => "MaxSize: " . MC::formatSizeUnits($v["maxSize"]['max']));
-                        }
-                        $i++;
-                    }
-
-                    $indexed[$x]['children'] = $children;
-                }
-            }
-            if (isset($flat[$arrKeys[$x]]['dirSumSize'])) {
-                $indexed[$x]['children'][] = array("icon" => "jstree-file", "text" => "dirSumSize: " . MC::formatSizeUnits($flat[$arrKeys[$x]]['dirSumSize']['sumSize']));
-            }
-            if (isset($flat[$arrKeys[$x]]['dirSumFiles'])) {
-                $indexed[$x]['children'][] = array("icon" => "jstree-file", "text" => "dirSumFiles: " . MC::formatSizeUnits($flat[$arrKeys[$x]]['dirSumFiles']['sumFileCount']));
-            }
+    public function checkAcceptedByArche(string $mime): ?Error {
+        $def = \acdhOeaw\ArcheFileFormats::getByMime($mime);
+        if ($def === null || empty($def->Long_term_format)) {
+            return new Error('ERROR', 'File format not accepted by ARCHE');
         }
-        return $indexed;
+        if ($def->Long_term_format === 'yes') {
+            return null;
+        }
+        return match ($def->Long_term_format) {
+            'unsure' => new Error('WARNING', 'Not sure if the file format is accepted by ARCHE'),
+            'restricted' => new Error('WARNING', 'Restricted file format'),
+            default => new Error('ERROR', 'File format not accepted by ARCHE'),
+        };
     }
 
-    /**
-     * 
-     * Generate the data to for the extension tree view
-     * based on the filetypelist.json
-     * 
-     * @param array<string, array<string, int>> $flat
-     * @return array<array<string, mixed>>
-     */
-    public function convertExtensionsToTree(array $flat): array {
+    public function checkBom(string $path): bool {
+        $fh      = fopen($path, 'r');
+        $content = fread($fh, 4);
+        fclose($fh);
+        return !(in_array($content, $this->bom[4]) || in_array(substr($content, 0, 3), $this->bom[3]) || in_array(substr($content, 0, 2), $this->bom[2]));
+    }
 
-        $indexed = [];
-        foreach ($flat as $flatKey => $flatValue) {
-            $entry = ['text' => $flatKey, 'children' => []];
-            foreach ($flatValue as $k => $v) {
-                $entry['children'][] = match ($k) {
-                    "sumSize" => ["icon" => "jstree-file", "text" => "SumSize: " . MC::formatSizeUnits($v)],
-                    "fileCount" => ["icon" => "jstree-file", "text" => "fileCount: " . $v . " file(s)"],
-                    "min" => ["icon" => "jstree-file", "text" => "MinSize: " . MC::formatSizeUnits($v)],
-                    "max" => ["icon" => "jstree-file", "text" => "MaxSize: " . MC::formatSizeUnits($v)],
-                    default => throw new RuntimeException("Unknown key $k"),
-                };
-            }
-            $indexed[] = $entry;
+    public function computeHash(string $path): string {
+        $hash  = hash_init($this->hashAlgo);
+        $input = fopen($path, 'r');
+        while (!feof($input)) {
+            $buffer = (string) fread($input, 1048576);
+            hash_update($hash, $buffer);
         }
-        return $indexed;
+        fclose($input);
+        return hash_final($hash, false);
     }
 }

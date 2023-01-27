@@ -1,27 +1,52 @@
 <?php
 
+/*
+ * The MIT License
+ *
+ * Copyright 2019 Austrian Centre for Digital Humanities.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ */
+
 namespace acdhOeaw\arche\fileChecker;
 
-use finfo;
-use acdhOeaw\arche\fileChecker\Misc as MC;
+use ProgressBar\Manager as PB;
 use acdhOeaw\arche\fileChecker\CheckFunctions;
 use acdhOeaw\arche\fileChecker\JsonHandler;
-use acdhOeaw\arche\fileChecker\HtmlOutput as HTML;
 
 class FileChecker {
 
-    const UNKNOWN_MIME = 'unknown';
+    static public function die(string $msg): void {
+        echo $msg;
+        exit(1);
+    }
 
     private string $tmpDir;
     private string $reportDir;
     private string $signatureDir;
-    private string $generatedReportDirectory;
     private string $tmplDir;
+    private string $checkDir;
     private JsonHandler $jsonHandler;
     private CheckFunctions $chkFunc;
-    private HTML $html;
     private int $startDepth;
-    private finfo $finfo;
+    private bool $noErrors;
+    private OutputFormatter $checkOutput;
 
     /**
      * 
@@ -31,16 +56,15 @@ class FileChecker {
 
     /**
      * 
-     * @var array<string, mixed>
+     * @var array<string, string>
      */
-    private array $fileTypeArray;
+    private array $hashes;
 
     /**
      * 
      * @param array<string, mixed> $config
      */
     public function __construct(array $config) {
-        $this->html    = new HTML();
         $this->chkFunc = new CheckFunctions($config);
         $this->cfg     = $config;
         $this->tmplDir = realpath(__DIR__ . '/../../../../template');
@@ -48,328 +72,191 @@ class FileChecker {
         $this->tmpDir       = $config['tmpDir'];
         $this->reportDir    = $config['reportDir'];
         $this->signatureDir = $config['signatureDir'];
-        MC::checkTmpDir($this->tmpDir, 'tmpDir');
-        MC::checkTmpDir($this->reportDir, 'reportDir');
-        MC::checkTmpDir($this->signatureDir, 'signatureDir');
+        $this->checkDirExistsWritable($this->tmpDir, 'tmpDir');
+        $this->checkDirExistsWritable($this->reportDir, 'reportDir');
+        $this->checkDirExistsWritable($this->signatureDir, 'signatureDir');
 
-        $this->generatedReportDirectory = $this->reportDir . '/' . date('Y_m_d_H_i_s');
-        $success                        = true;
-        $success                        &= mkdir($this->generatedReportDirectory);
-        $success                        &= mkdir($this->generatedReportDirectory . "/js");
-        $success                        &= mkdir($this->generatedReportDirectory . "/css");
-        if (!$success) {
-            MC::die("Report directories creation ($this->generatedReportDirectory and subdirs) failed");
-        }
-
-        try {
-            $this->finfo = new finfo(FILEINFO_MIME_TYPE);
-        } catch (\Exception $ex) {
-            echo "Failed to instantiate the finfo object. Falling back to mime_content_type() for getting file's MIME type.\n";
+        if (!$config['overwrite']) {
+            $this->reportDir = $this->reportDir . '/' . date('Y_m_d_H_i_s');
+            mkdir($this->reportDir);
         }
     }
 
     /**
-     * Get the dir what the script should check
-     * 
+     * Recursively checks a given directory writing results in the
+     * {reportsDir}/fileInfo.jsonl JSONlines file.
      */
-    public function check(string $dir, int $output = 0,
-                          int $maxDepth = PHP_INT_MAX): bool {
-        $this->fileTypeArray = [
-            'extensions' => [],
-            'summary'    => [],
-        ];
-        $format              = $output === 2 ? JsonHandler::FORMAT_NDJSON : JsonHandler::FORMAT_JSON;
-        $this->jsonHandler   = new JsonHandler($this->generatedReportDirectory, $format);
+    public function check(string $dir, int $maxDepth = PHP_INT_MAX): bool {
+        echo "\n### Checking $dir...\n";
 
-        $this->jsonHandler->noError = true;
-        $maxDepth = 2;
-        $this->startDepth           = $maxDepth;
-        $this->checkDir(realpath($dir), $maxDepth);
-        $this->postprocess($output);
+        $this->checkDir    = realpath($dir);
+        $this->hashes      = [];
+        $this->startDepth  = $maxDepth;
+        $this->noErrors    = true;
+        $this->checkOutput = new OutputFormatter("$this->reportDir/fileInfo.jsonl", OutputFormatter::FORMAT_JSONLINES);
+        $dirInfo           = FileInfo::fromPath($this->checkDir);
+        $this->checkDir($dirInfo, $maxDepth);
+        $dirInfo->save($this->checkOutput);
+        $this->checkOutput->close();
 
-        return $this->jsonHandler->noError;
+        echo "\n### Finished checking $dir\n";
+        return $this->noErrors;
     }
 
-    /**
-     * 
-     * @param string $dir
-     * @param int $depthToGo
-     * @return array<FileInfo>
-     */
-    private function checkDir(string $dir, int $depthToGo): array {
-        $retval  = [];
-        $dirInfo = FileInfo::factory($dir, '', $this->chkFunc->checkDirectoryNameValidity($dir));
-
+    private function checkDir(FileInfo $dirInfo, int $depthToGo): void {
         // don't validate the top-level directory        
         if ($depthToGo < $this->startDepth) {
-            if (!$dirInfo->valid) {
-                $this->jsonHandler->writeDataToJsonFile($dirInfo->getError("Directory name contains invalid characters"));
-            }
-            $retval[] = $dirInfo;
-            $this->jsonHandler->writeDataToJsonFile($dirInfo->asDirectoriesEntry());
+            $dirInfo->assert($this->chkFunc->checkDirectoryNameValidity($dirInfo->filename), "Directory name contains invalid characters");
         }
 
         echo "\nGenerating files list...\n";
-        $files = scandir($dir);
+        $files = scandir($dirInfo->path);
         if ($files === false) {
-            MC::die("getFileList: Failed opening directory $dir for reading");
+            self::die("getFileList: Failed opening directory $dir for reading");
         }
-        $files = array_filter($files, fn($x) => $x !== '.' && $x != '..');
-        if (count($files) === 0) {
-            $this->jsonHandler->writeDataToJsonFile($dirInfo->getError("Directory is empty"));
-            return [];
-        }
+        $files = array_diff($files, ['.', '..']);
+        $dirInfo->assert(count($files) > 0, "Empty directory");
 
-        $pbFL = new \ProgressBar\Manager(0, count($files));
+        $pbFL               = new PB(0, count($files));
+        $filenameDuplicates = [];
         foreach ($files as $entry) {
             echo "$entry\n";
-            $path = "$dir/$entry";
-            if (is_dir($path) && $depthToGo > 0) {
-                $retval = array_merge($retval, $this->checkDir($path, $depthToGo - 1));
+            $fileInfo      = FileInfo::fromPath("$dirInfo->path/$entry");
+            $dirInfo->size += $fileInfo->size;
+
+            if ($fileInfo->type === 'dir' && $depthToGo > 0) {
+                $this->checkDir($fileInfo, $depthToGo - 1);
                 echo "\nSubdirectory content checked... \n";
-            } elseif (is_link($path)) {
-                $this->jsonHandler->writeDataToJsonFile(new Error($dir, $entry, "Symbolic links aren't allowed"));
-            } elseif (is_file($path)) {
-                $retval[] = $this->checkFile($path);
             } else {
-                $this->jsonHandler->writeDataToJsonFile(new Error($dir, $entry, "Unprocessable file type " . filetype($path)));
+                $this->checkFile($fileInfo);
+                $dirInfo->filesCount++;
             }
+
+            $entryStd                      = mb_strtolower($entry);
+            $fileInfo->assert(!isset($filenameDuplicates[$entryStd]), "Duplicated filename within a directory", "Duplicated with " . ($filenameDuplicates[$entryStd] ?? ''));
+            $filenameDuplicates[$entryStd] = $entry;
+
+            $fileInfo->save($this->checkOutput);
+
             $pbFL->advance();
             echo "\n";
         }
-
-        return $retval;
     }
 
-    private function checkFile(string $path): FileInfo {
-        $dir   = dirname($path);
-        $entry = basename($path);
-        if (isset($this->finfo)) {
-            $fileType = $this->finfo->file($path) ?: self::UNKNOWN_MIME;
-        } else {
-            $fileType = mime_content_type($path) ?: self::UNKNOWN_MIME;
-        }
-        $fileInfo = FileInfo::factory($dir, $entry, $this->chkFunc->checkFileNameValidity($entry));
+    private function checkFile(FileInfo $fileInfo): void {
+        $fileInfo->assert($fileInfo->type === 'file', "Wrong file type");
+        $fileInfo->assert($this->chkFunc->checkBlackListFile($fileInfo->extension), "Blacklisted extension");
+        $fileInfo->assert($this->chkFunc->checkFileNameValidity($fileInfo->filename), "Filename contains invalid characters");
+        $fileInfo->assert($this->chkFunc->checkMimeTypes($fileInfo->extension, $fileInfo->mime), 'MIME type does not match extension');
+        $fileInfo->assert($this->chkFunc->checkBom($fileInfo->path), 'File contains a Byte Order Mark');
+        $fileInfo->appendErrors($this->chkFunc->checkAcceptedByArche($fileInfo->mime));
 
-        //blacklist files
-        if ($this->chkFunc->checkBlackListFile($fileInfo->extension)) {
-            $this->jsonHandler->writeDataToJsonFile($fileInfo->getError("This file extension is blacklisted"));
-        }
-        //check the file name validity
-        if ($fileInfo->valid === false) {
-            $this->jsonHandler->writeDataToJsonFile($fileInfo->getError("File name contains invalid characters"));
-        }
-        //check the mime extensions
-        if ($this->chkFunc->checkMimeTypes($fileInfo->extension, $fileType)) {
-            $this->jsonHandler->writeDataToJsonFile($fileInfo->getError('MIME type does not match format extension'));
-        }
+        // duplicated files
+        $hash                = $this->chkFunc->computeHash($fileInfo->path);
+        $fileInfo->assert(!isset($this->hashes[$hash]), "Duplicated by hash", "Duplicated with " . ($this->hashes[$hash] ?? ''));
+        $this->hashes[$hash] = $fileInfo->path;
 
-        //check the ZIP files
-        if (
-            $fileInfo->extension == "zip" || $fileType == "application/zip" ||
-            $fileInfo->extension == "gzip" || $fileType == "application/gzip" ||
-            $fileInfo->extension == "7zip" || $fileType == "application/7zip"
-        ) {
-            if ($fileInfo->size > $this->cfg['zipSize']) {
-                $this->jsonHandler->writeDataToJsonFile($fileInfo->getError("The ZIP was skipped, because it is too large"));
-            } else {
-                $zipError = $this->chkFunc->checkZipFile($path);
-                if ($zipError !== null) {
-                    $this->jsonHandler->writeDataToJsonFile($zipError);
-                }
-            }
+        // zip checks
+        $isZip = in_array($fileInfo->extension, ['zip', 'gzip', '7zip']) ||
+            in_array($fileInfo->mime, ['application/zip', 'application/gzip', 'application/7zip']);
+        if ($isZip && $fileInfo->size > $this->cfg['zipSize']) {
+            $fileInfo->assert(false, 'ZIP too large');
+        } elseif ($isZip) {
+            $fileInfo->appendErrors($this->chkFunc->checkZipFile($fileInfo->path));
         }
-
         //check the PDF Files
-        if ($fileInfo->extension == "pdf" || $fileType == "application/pdf") {
-            //check the zip files and add them to the zip pwd checking
-            if ($fileInfo->size > $this->cfg['pdfSize']) {
-                $this->jsonHandler->writeDataToJsonFile($fileInfo->getError("The PDF was skipped, because it is too large"));
-            } else {
-                $pdfError = $this->chkFunc->checkPdfFile($path);
-                if ($pdfError !== null) {
-                    $this->jsonHandler->writeDataToJsonFile($pdfError);
-                }
-            }
+        $isPdf = $fileInfo->extension == "pdf" || $fileInfo->mime == "application/pdf";
+        if ($isPdf && $fileInfo->size > $this->cfg['pdfSize']) {
+            $fileInfo->assert(false, "PDF too large");
+        } elseif ($isPdf) {
+            $fileInfo->appendErrors($this->chkFunc->checkPdfFile($fileInfo->path));
         }
         //check the RAR files
-        if ($fileInfo->extension == "rar" || $fileType == "application/rar") {
-            $this->jsonHandler->writeDataToJsonFile($fileInfo->getError("This is a RAR file! Please check it manually!"));
-        }
-
+        $fileInfo->assert($fileInfo->extension == "rar" || $fileInfo->mime == "application/rar", "RAR file - can't process");
         //check PW protected XLSX, DOCX
-        if (($fileInfo->extension == "xlsx" || $fileInfo->extension == "docx") && $fileType == "application/CDFV2-encrypted") {
-            $this->jsonHandler->writeDataToJsonFile($fileInfo->getError("This document (XLSX,DOCX) is password protected"));
-        }
-
+        $fileInfo->assert(in_array($fileInfo->extension, ["xlsx", "docx"]) && $fileInfo->mime === "application/CDFV2-encrypted", "Encrypted DOCS/XLSX");
         //check the bagit files
-        if (strpos(strtolower($dir), 'bagitaaa') !== false) {
-            $bagItResult = [];
-            $bagItResult = $this->chkFunc->checkBagitFile($path);
-            if (count($bagItResult) > 0) {
-                foreach ($bagItResult as $filename => $val) {
-                    $dir = "";
-                    if ((strpos($filename, '/') !== false) || (strpos($filename, '\\') !== false)) {
-                        $dir      = $filename;
-                        $filename = substr($filename, strrpos($filename, '/') + 1);
-                        $dir      = str_replace($filename, '', $dir);
-                    }
-                    if (is_array($val) && count($val) > 0) {
-                        foreach ($val as $v) {
-                            $error = "";
-                            if (isset($v[0]) && isset($v[1])) {
-                                $error = $v[0] . ". error: " . $v[1];
-                            } else {
-                                $error = $v[0];
-                            }
-                            $error = empty($error) ? "BagIt file is not valid or can not be analysed" : $error;
-                            $this->jsonHandler->writeDataToJsonFile($fileInfo->getError('BagIt error', $error));
-                        }
-                    }
-                }
-            }
+        if (strpos(strtolower($fileInfo->directory), 'bagit') !== false) {
+            $fileInfo->appendErrors($this->chkFunc->checkBagitFile($fileInfo->path));
         }
-        $cleanDir = MC::clean($dir);
-
-        //check that the file is damaged or not
-        if ($fileInfo->size <= 0) {
-            $this->fileTypeArray['info']['damagedFiles'] = [
-                "filename" => "$dir$entry",
-                "dir"      => $dir
-            ];
-        } else {
-            $ext                                                 = $fileInfo->extension;
-            //directories
-            $arrRef                                              = &$this->fileTypeArray['directories'][$cleanDir];
-            $arrRef['extension'][$ext]['sumSize']['sum']         = ($arrRef['extension'][$ext]['sumSize']['sum'] ?? 0) + $fileInfo->size;
-            $arrRef['dirSumSize']['sumSize']                     = ($arrRef['dirSumSize']['sumSize'] ?? 0) + $fileInfo->size;
-            $arrRef['dirSumFiles']['sumFileCount']               = ($arrRef['dirSumFiles']['sumFileCount'] ?? 0) + 1;
-            $arrRef['extension'][$ext]['fileCount']['fileCount'] = ($arrRef['extension'][$ext]['fileCount']['fileCount'] ?? 0) + 1;
-            $arrRef['extension'][$ext]['minSize']['min']         = min($arrRef['extension'][$ext]['minSize']['min'] ?? PHP_INT_MAX, $fileInfo->size);
-            $arrRef['extension'][$ext]['maxSize']['max']         = max($arrRef['extension'][$ext]['maxSize']['max'] ?? 0, $fileInfo->size);
-
-            // extensions
-            $arrRef              = &$this->fileTypeArray['extensions'][$ext];
-            $arrRef['fileCount'] = ($arrRef['fileCount'] ?? 0) + 1;
-            $arrRef['min']       = min($arrRef['min'] ?? PHP_INT_MAX, $fileInfo->size);
-            $arrRef['max']       = max($arrRef['max'] ?? 0, $fileInfo->size);
-
-            //summary
-            $arrRef                     = &$this->fileTypeArray['summary'];
-            $arrRef['overallFileCount'] = ($arrRef['overallFileCount'] ?? 0) + 1;
-            $arrRef['overallFileSize']  = ($arrRef['overallFileSize'] ?? 0) + $fileInfo->size;
-        }
-        $this->jsonHandler->writeDataToJsonFile($fileInfo);
-        $this->jsonHandler->writeDataToJsonFile($fileInfo->asFilesEntry());
-
-        return $fileInfo;
     }
 
-    private function postprocess(int $output): void {
-        if (count($this->fileTypeArray) > 0) {
-            $this->jsonHandler->writeDataToJsonFile($this->fileTypeArray, "fileTypeList");
-            $this->jsonHandler->closeJsonFile('fileTypeList');
+    /**
+     * Generates JSON, CSV and HTML reports based on the {reportsDir}/fileInfo.jsonl
+     * file generated by the check() method.
+     * 
+     * @param bool $csv
+     * @param bool $html
+     * @return void
+     */
+    public function generateReports(bool $csv, bool $html): void {
+        echo "\n### Generating reports...\n";
+
+        // JSON and CSV
+        $infh = fopen("$this->reportDir/fileInfo.jsonl", 'r');
+        $of   = [];
+        $of[] = [FileInfo::OUTPUT_ERROR, new OutputFormatter("$this->reportDir/error.json", OutputFormatter::FORMAT_JSON)];
+        $of[] = [FileInfo::OUTPUT_FILELIST, new OutputFormatter("$this->reportDir/fileList.json", OutputFormatter::FORMAT_JSON)];
+        $of[] = [FileInfo::OUTPUT_DIRLIST, new OutputFormatter("$this->reportDir/directoryList.json", OutputFormatter::FORMAT_JSON)];
+        if ($csv) {
+            $of[] = [FileInfo::OUTPUT_ERROR, new OutputFormatter("$this->reportDir/error.csv", OutputFormatter::FORMAT_CSV, FileInfo::getCsvHeader(FileInfo::OUTPUT_ERROR))];
+            $of[] = [FileInfo::OUTPUT_FILELIST, new OutputFormatter("$this->reportDir/fileList.csv", OutputFormatter::FORMAT_CSV, FileInfo::getCsvHeader(FileInfo::OUTPUT_FILELIST))];
+            $of[] = [FileInfo::OUTPUT_DIRLIST, new OutputFormatter("$this->reportDir/directoryList.csv", OutputFormatter::FORMAT_CSV, FileInfo::getCsvHeader(FileInfo::OUTPUT_DIRLIST))];
         }
-
-        if ($output == 0 || $output == 1 || $output == 3) {
-            $this->jsonHandler->closeJsonFile('fileList');
-            $this->jsonHandler->closeJsonFile('files');
-            $this->jsonHandler->closeJsonFile('directoryList');
-
-            $filesJson  = $this->generatedReportDirectory . '/files.json';
-            $duplicates = [];
-            if (file_exists($filesJson)) {
-                $arr = json_decode(file_get_contents($filesJson), true);
-                if (is_array($arr) && isset($arr['data'])) {
-                    $duplicates = $this->chkFunc->checkFileDuplications($arr['data']);
-                }
-            }
-            if (count($duplicates) > 0) {
-                foreach ($duplicates["Duplicate_File_And_Size"] ?? [] as $k => $v) {
-                    $arr     = [];
-                    $arr[$k] = $v;
-
-                    $this->jsonHandler->writeDataToJsonFile($arr, "duplicates_size");
-                    if (is_array($v)) {
-                        $dirs = implode(",", $v);
-                    } else {
-                        $dirs = $v;
-                    }
-                    $this->jsonHandler->writeDataToJsonFile(new Error($dirs, $k, "DUPLICATION! There is a file with same name and size!"));
-                }
-
-                $this->jsonHandler->closeJsonFile('duplicates_size');
-
-                foreach ($duplicates["Duplicate_File"] ?? [] as $k => $v) {
-                    $arr     = [];
-                    $arr[$k] = $v;
-                    $this->jsonHandler->writeDataToJsonFile($arr, "duplicates");
-                    if (is_array($v)) {
-                        $dirs = implode(",", $v);
-                    } else {
-                        $dirs = $v;
-                    }
-                    $this->jsonHandler->writeDataToJsonFile(new Error($dirs, $k, "DUPLICATION! There is a file with same name!"));
-                }
-
-                $this->jsonHandler->closeJsonFile('duplicates');
-            }
-
-            $this->jsonHandler->closeJsonFile('error');
-
-            if ($output == 1) {
-                //create basic html
-                $this->html->generateFileListHtml($this->generatedReportDirectory);
-                $this->html->generateErrorListHtml($this->generatedReportDirectory);
-                $this->html->generateDirListHtml($this->generatedReportDirectory);
-
-                if (file_exists($this->generatedReportDirectory . '/' . 'fileTypeList.json')) {
-                    $obj = json_decode(file_get_contents($this->generatedReportDirectory . '/' . 'fileTypeList.json'), true);
-                    if (isset($obj['data'][0]['directories']) && count((array) $obj['data'][0]['directories']) > 0) {
-                        $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
-                        if (count((array) $result) > 0) {
-                            file_put_contents($this->generatedReportDirectory . '/directories.json', json_encode($result));
-                        }
-                    }
-                    if (isset($obj['data'][0]['extensions']) && count((array) $obj['data'][0]['extensions']) > 0) {
-                        $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
-                        if (count((array) $resultExt) > 0) {
-                            file_put_contents($this->generatedReportDirectory . '/extensions.json', json_encode($resultExt));
-                        }
-                    }
-                    $this->html->generateFileTypeListHtml($this->generatedReportDirectory);
-                }
-                $jsonTypes = [
-                    'fileTypeList', 'error', 'directories', 'directoryList',
-                    'extensions', 'files', 'fileList'
-                ];
-                foreach ($jsonTypes as $jsonType) {
-                    $filePath = "$this->generatedReportDirectory/$jsonType.json";
-                    if (!file_exists($filePath)) {
-                        copy("$this->tmplDir/$jsonType.json", $filePath);
-                    }
-                }
-            }
-
-            if ($output == 3) {
-                //create basic html
-                $this->html->generateFileListHtml($this->generatedReportDirectory);
-                $this->html->generateErrorListHtml($this->generatedReportDirectory);
-                $this->html->generateDirListHtml($this->generatedReportDirectory);
-
-                if (file_exists($this->generatedReportDirectory . '/' . 'fileTypeList.json')) {
-                    $obj    = json_decode(file_get_contents($this->generatedReportDirectory . '/fileTypeList.json'), true);
-                    $result = $this->chkFunc->convertDirectoriesToTree($obj['data'][0]['directories']);
-                    if (count($result) > 0) {
-                        file_put_contents($this->generatedReportDirectory . '/directories.json', json_encode($result));
-                    }
-                    $resultExt = $this->chkFunc->convertExtensionsToTree($obj['data'][0]['extensions']);
-                    if (count($resultExt) > 0) {
-                        file_put_contents($this->generatedReportDirectory . '/extensions.json', json_encode($resultExt));
-                    }
-                    $this->html->generateFileTypeJstreeHtml($this->generatedReportDirectory);
-                }
+        while ($l = fgets($infh)) {
+            $fi = FileInfo::fromJson($l);
+            foreach ($of as $i) {
+                $fi->save($i[1], $i[0]);
             }
         }
+        fclose($infh);
+        foreach ($of as $i) {
+            $i[1]->close();
+        }
+
+        // HTML
+        if ($html) {
+            $tmpl = file_get_contents(__DIR__ . '/../../../../template/index.html');
+            $tmpl = explode('/*DATA*/', $tmpl);
+            $fh   = fopen("$this->reportDir/index.html", 'w');
+            fwrite($fh, $tmpl[0]);
+            fwrite($fh, "baseDir = " . json_encode($this->checkDir) . ";\n");
+
+            fwrite($fh, "var fileList = ");
+            $this->copyFileContent("$this->reportDir/fileList.json", $fh);
+            fwrite($fh, ";\n");
+
+            fwrite($fh, "var directoryList = ");
+            $this->copyFileContent("$this->reportDir/directoryList.json", $fh);
+            fwrite($fh, ";\n");
+
+            fwrite($fh, "var errorList = ");
+            $this->copyFileContent("$this->reportDir/error.json", $fh);
+            fwrite($fh, ";\n");
+
+            $dict = [
+                '{{title}}' => 'Report for ' . $this->checkDir,
+            ];
+            fwrite($fh, str_replace(array_keys($dict), array_values($dict), $tmpl[1]));
+            fclose($fh);
+        }
+
+        echo "\n### Finished reports generation\n";
+    }
+
+    private function checkDirExistsWritable(string $dir,
+                                            string $type = "tempDir"): void {
+        $real = realpath($dir);
+        if (!is_dir($real) || !is_writable($real)) {
+            self::die("\nERROR $type ($dir) does't exist or isn't writable.\n");
+        }
+    }
+
+    private function copyFileContent($from, $to): void {
+        $from = fopen($from, 'r') ?: self::die("Can't open $from for reading");
+        while (!feof($from)) {
+            fwrite($to, fread($from, 1048576));
+        }
+        fclose($from);
     }
 }
