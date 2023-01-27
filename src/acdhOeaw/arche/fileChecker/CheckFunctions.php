@@ -151,7 +151,7 @@ class CheckFunctions {
         $dir      = dirname($filename);
         $filename = basename($filename);
         $issues   = array_map(
-            fn($x) => new Error('ERROR', 'BagIt_Error', $x['file'] . ': ' . $x['message']),
+            fn($x) => new Error(Error::SEVERITY_ERROR, 'BagIt_Error', $x['file'] . ': ' . $x['message']),
                                 $issues
         );
 
@@ -192,16 +192,13 @@ class CheckFunctions {
 
     /**
      * 
-     * Check the MIME types and extensions based on the MISC.php extension list
+     * Check the extension is valid for a given MIME type according to the
+     * definitions read from the DROID signatures file.
      * 
-     * 
-     * @param string $extension
-     * @param string $type
-     * @return bool
      */
-    public function checkMimeTypes(string $extension, string $mime): bool {
+    public function checkMimeTypes(string $extension, string $mime): ?Error {
         $validMime = $this->mimeTypes[mb_strtolower($extension)] ?? [];
-        return in_array(mb_strtolower($mime), $validMime);
+        return in_array(mb_strtolower($mime), $validMime) ? null : new Error(Error::SEVERITY_ERROR, "Extension doesn't match MIME type", "Extension: $extension, MIME type: $mime, allowed MIME types: " . implode(', ', $validMime));
     }
 
     /**
@@ -216,7 +213,7 @@ class CheckFunctions {
             $parser = new \Smalot\PdfParser\Parser();
             $parser->parseFile($file);
         } catch (\Exception $ex) {
-            return new Error('ERROR', "PDF error", $ex->getMessage());
+            return new Error(Error::SEVERITY_ERROR, "PDF error", $ex->getMessage());
         }
         return null;
     }
@@ -231,13 +228,13 @@ class CheckFunctions {
     public function checkZipFile(string $zipFile): ?Error {
         $za = new \ZipArchive();
         if ($za->open($zipFile) !== TRUE) {
-            return new Error('ERROR', "Zip_Open_Error");
+            return new Error(Error::SEVERITY_ERROR, "Zip_Open_Error");
         }
         $filesCount = $za->count();
         for ($i = 0; $i < $filesCount; $i++) {
             $res = $za->getStream($za->statIndex($i)['name']);
             if ($res === false) {
-                return new Error('ERROR', "Zip_Error", $za->getStatusString());
+                return new Error(Error::SEVERITY_ERROR, "Zip_Error", $za->getStatusString());
             }
         }
         return null;
@@ -246,7 +243,7 @@ class CheckFunctions {
     public function checkAcceptedByArche(string $mime): ?Error {
         $def = \acdhOeaw\ArcheFileFormats::getByMime($mime);
         if ($def === null || empty($def->Long_term_format)) {
-            return new Error('ERROR', 'File format not accepted by ARCHE');
+            return new Error(Error::SEVERITY_ERROR, 'File format not accepted by ARCHE');
         }
         if ($def->Long_term_format === 'yes') {
             return null;
@@ -254,7 +251,7 @@ class CheckFunctions {
         return match ($def->Long_term_format) {
             'unsure' => new Error('WARNING', 'Not sure if the file format is accepted by ARCHE'),
             'restricted' => new Error('WARNING', 'Restricted file format'),
-            default => new Error('ERROR', 'File format not accepted by ARCHE'),
+            default => new Error(Error::SEVERITY_ERROR, 'File format not accepted by ARCHE'),
         };
     }
 

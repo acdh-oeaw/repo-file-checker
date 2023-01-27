@@ -33,7 +33,12 @@ namespace acdhOeaw\arche\fileChecker;
  */
 class Error {
 
-    public function __construct(public string $severity, public string $errorType,
+    const SEVERITY_ERROR   = 'ERROR';
+    const SEVERITY_WARNING = 'WARNING';
+    const SEVERITY_INFO    = 'INFO';
+
+    public function __construct(public string $severity,
+                                public string $errorType,
                                 public string $errorMessage = '') {
         
     }

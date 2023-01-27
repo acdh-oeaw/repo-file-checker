@@ -147,8 +147,8 @@ class FileChecker {
         $fileInfo->assert($fileInfo->type === 'file', "Wrong file type");
         $fileInfo->assert($this->chkFunc->checkBlackListFile($fileInfo->extension), "Blacklisted extension");
         $fileInfo->assert($this->chkFunc->checkFileNameValidity($fileInfo->filename), "Filename contains invalid characters");
-        $fileInfo->assert($this->chkFunc->checkMimeTypes($fileInfo->extension, $fileInfo->mime), 'MIME type does not match extension');
         $fileInfo->assert($this->chkFunc->checkBom($fileInfo->path), 'File contains a Byte Order Mark');
+        $fileInfo->appendErrors($this->chkFunc->checkMimeTypes($fileInfo->extension, $fileInfo->mime));
         $fileInfo->appendErrors($this->chkFunc->checkAcceptedByArche($fileInfo->mime));
 
         // duplicated files
