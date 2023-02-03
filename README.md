@@ -60,6 +60,8 @@ Remarks:
 
 ## On repo-ingestion@hephaistos
 
+First login to repo-ingestion@hephaistos and run `screen ./login.sh`.
+
 * filechecker
   ```bash
   /ARCHE/vendor/bin/arche-filechecker --csv --html directoryToBeProcessed directoryToWriteReportsInto

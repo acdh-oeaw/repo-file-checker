@@ -2,6 +2,7 @@ FROM php:8.1-cli
 RUN curl -sSLf -o /usr/local/bin/install-php-extensions https://github.com/mlocati/docker-php-extension-installer/releases/latest/download/install-php-extensions && \
     chmod +x /usr/local/bin/install-php-extensions &&\
     mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" &&\
+    sed -i -e 's/^memory_limit.*/memory_limit = -1/g' $PHP_INI_DIR/php.ini &&\
     apt update &&\
     apt install -y clamav clamdscan clamav-daemon &&\
     sed -i -e 's/^User .*/User root/g' /etc/clamav/clamd.conf &&\
