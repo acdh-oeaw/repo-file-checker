@@ -47,7 +47,6 @@
 ```bash
 vendor/bin/arche-filechecker --csv --html directoryToBeProcessed directoryToWriteReportsInto
 ```
-```
 
 Remarks:
 
@@ -59,7 +58,18 @@ Remarks:
   ```
 * If you have [bagit](https://en.wikipedia.org/wiki/BagIt) files, place them into a folder called `bagit` and also compress them into a tgz file.
 
-### As a docker container
+## On repo-ingestion@hephaistos
+
+* filechecker
+  ```bash
+  /ARCHE/vendor/bin/arche-filechecker --csv --html directoryToBeProcessed directoryToWriteReportsInto
+  ```
+* virus scan
+  ```bash
+  clamscan --infected directoryToScan
+  ```
+
+## As a docker container
 
 * Consider downloading fresh signatures for the antivirus software
   ```bash
