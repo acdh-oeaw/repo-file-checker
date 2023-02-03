@@ -26,6 +26,7 @@
 
 namespace acdhOeaw\arche\fileChecker;
 
+use DOMDocument;
 use PharData;
 use SimpleXMLElement;
 use UnexpectedValueException;
@@ -114,8 +115,8 @@ class CheckFunctions {
         // hacks
         $this->extToMime['tsv'][]     = 'text/tsv';
         $this->extToMime['geojson'][] = 'application/json';
-        $this->extToMime['avif'] = ['image/avif'];
-        $this->extToMime['webp'] = ['image/webp'];
+        $this->extToMime['avif']      = ['image/avif'];
+        $this->extToMime['webp']      = ['image/webp'];
 
         // read file formats from arche-assets
         // in case of extension/mime conflicts be conservative and assign "accepted" instead of "preferred"
@@ -235,6 +236,35 @@ class CheckFunctions {
         if (!in_array($mime, $validMime)) {
             $fi->error("File content doesn't match extension", "Extension: $fi->extension, MIME type: $fi->mime, MIME types allowed for this extension: " . implode(', ', $validMime));
         }
+    }
+
+    #[CheckFile]
+    public function checkXml(FileInfo $fi): void {
+        static $schemaAttr = ['noNamespaceSchemaLocation', 'schemaLocation'];
+        if (!in_array($fi->mime, ['text/xml', 'application/xml'])) {
+            return;
+        }
+        $prev = libxml_use_internal_errors(true);
+        $xml  = new DOMDocument();
+        $res  = $xml->load($fi->path, LIBXML_DTDVALID || LIBXML_BIGLINES || LIBXML_COMPACT);
+        if ($res === false) {
+            $fi->error("XML validation", "Failed to parse the XML file with: " . print_r(libxml_get_last_error(), true));
+        }
+        foreach ($xml->firstChild->attributes as $attr) {
+            if ($attr->namespaceURI === 'http://www.w3.org/2001/XMLSchema-instance' && in_array($attr->localName, $schemaAttr)) {
+                $schemaLocation = preg_replace('/\\s.*$/', '', trim($attr->nodeValue));
+                if ($attr->localName === 'noNamespaceSchemaLocation' && substr($schemaLocation, 0, 1) !== '/') {
+                    $schemaLocation = $fi->directory . '/' . $schemaLocation;
+                }
+                $res = $xml->schemaValidate($schemaLocation);
+                if ($res) {
+                    $fi->info('XML validation', "Successfully validated against $schemaLocation");
+                } else {
+                    $fi->error('XML validation', "Schema validation error: " . print_r(libxml_get_last_error(), true));
+                }
+            }
+        }
+        libxml_use_internal_errors($prev);
     }
 
     /**

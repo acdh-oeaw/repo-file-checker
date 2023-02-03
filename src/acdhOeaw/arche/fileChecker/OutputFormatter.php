@@ -37,6 +37,7 @@ class OutputFormatter {
     const FORMAT_JSONLINES = 'jsonlines';
     const FORMAT_CSV       = 'csv';
     const CSV_SEPARATOR    = ';';
+    const CSV_ESCAPE       = '"';
 
     /**
      * 
@@ -62,7 +63,7 @@ class OutputFormatter {
         $data        = match ($this->format) {
             self::FORMAT_JSONLINES => json_encode($data, JSON_UNESCAPED_SLASHES) . "\n",
             self::FORMAT_JSON => ($this->first ? '' : ",\n") . json_encode($data, JSON_UNESCAPED_SLASHES),
-            self::FORMAT_CSV => implode(self::CSV_SEPARATOR, array_map(fn($x) => is_bool($x) ? ($x ? 'yes' : 'no') : $x, $data)) . "\n",
+            self::FORMAT_CSV => implode(self::CSV_SEPARATOR, array_map(fn($x) => is_bool($x) ? ($x ? 'yes' : 'no') : (is_string($x) ? self::CSV_ESCAPE . str_replace(self::CSV_ESCAPE, self::CSV_ESCAPE . self::CSV_ESCAPE, $x) . self::CSV_ESCAPE : $x), $data)) . "\n",
         };
         fwrite($this->fh, $data);
         $this->first = false;
