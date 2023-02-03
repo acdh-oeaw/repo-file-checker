@@ -16,15 +16,15 @@
 
 * File and directory names don't contain forbidden characters.
 * File extension matches MIME type deteced based on the file content
-  (MIME-extensions mapping based on the [PRONOM database](http://www.nationalarchives.gov.uk/aboutapps/pronom)).
+  (MIME-extensions mapping based on the [PRONOM database](http://www.nationalarchives.gov.uk/aboutapps/pronom) with some tuning for not fully reliable content-based MIME type recognition).
 * MIME type of a file must be accepted by the ARCHE (as reported by the [arche-assets](https://github.com/acdh-oeaw/arche-assets/)).
 * Text files don't contain the [byte order mark](https://en.wikipedia.org/wiki/Byte_order_mark).
-* [BagIt](https://en.wikipedia.org/wiki/BagIt) archives are correct (based on checks performed by the [whikloj/bagittools](https://github.com/whikloj/BagItTools) library).
-  * TODO - reliably recognize that a file is a BagIt file
-* ZIP files aren't password protected.
-* XLSX and DOCX files aren't password protected (based on the MIME type).
-* PDF files aren't password protected (with the [FPDI](https://github.com/Setasign/FPDI) library).
+* [BagIt](https://en.wikipedia.org/wiki/BagIt) archives are correct (based on checks performed by the [whikloj/bagittools](https://github.com/whikloj/BagItTools) library; bagit archives can be uncompressed of zip/tar gz/tar bz2 files).
+* ZIP, XLSX, DOCX, ODS, ODT and PDF files aren't password protected.
   * To avoid memory limit problems only files up to a configuration-determined size are checked.
+* XML files providing schema information are validated against the schema.
+* No duplicated files (compared by hash).
+* No filenames conflicts on case-insensitive filesystems.
 		  
 ## Installation
 
