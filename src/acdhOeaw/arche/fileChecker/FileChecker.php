@@ -26,11 +26,21 @@
 
 namespace acdhOeaw\arche\fileChecker;
 
+use Closure;
+use Exception;
+use ReflectionClass;
+use RecursiveDirectoryIterator;
+use RecursiveIteratorIterator;
 use ProgressBar\Manager as PB;
 use acdhOeaw\arche\fileChecker\CheckFunctions;
 use acdhOeaw\arche\fileChecker\JsonHandler;
+use acdhOeaw\arche\fileChecker\attributes\CheckFile;
+use acdhOeaw\arche\fileChecker\attributes\CheckDir;
 
 class FileChecker {
+
+    const HASH_FALLBACK = 'sha1';
+    const HASH_DEFAULT  = 'xxh128';
 
     static public function die(string $msg): void {
         echo $msg;
@@ -47,6 +57,8 @@ class FileChecker {
     private int $startDepth;
     private bool $noErrors;
     private OutputFormatter $checkOutput;
+    private string $hashAlgo;
+    private PB $progressBar;
 
     /**
      * 
@@ -59,6 +71,18 @@ class FileChecker {
      * @var array<string, string>
      */
     private array $hashes;
+
+    /**
+     * 
+     * @var array<Closure>
+     */
+    private array $checksFile = [];
+
+    /**
+     * 
+     * @var array<Closure>
+     */
+    private array $checksDir = [];
 
     /**
      * 
@@ -80,6 +104,24 @@ class FileChecker {
             $this->reportDir = $this->reportDir . '/' . date('Y_m_d_H_i_s');
             mkdir($this->reportDir);
         }
+
+        $this->hashAlgo = $config['hashAlgo'] ?? self::HASH_DEFAULT;
+        if (!in_array($this->hashAlgo, hash_algos())) {
+            echo "Hashing algorithm $hash->algo unavailable, falling back to " . self::HASH_FALLBACK . "\n\n";
+            $this->hashAlgo = self::HASH_FALLBACK;
+        }
+
+        // initialize checks by introspecting the CheckFunctions class
+        $rc = new ReflectionClass(CheckFunctions::class);
+        foreach ($rc->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
+            $attr = array_map(fn($x) => $x->getName(), $method->getAttributes());
+            if (in_array(CheckFile::class, $attr)) {
+                $this->checksFile[] = $method->getClosure($this->chkFunc);
+            }
+            if (in_array(CheckDir::class, $attr)) {
+                $this->checksDir[] = $method->getClosure($this->chkFunc);
+            }
+        }
     }
 
     /**
@@ -87,97 +129,83 @@ class FileChecker {
      * {reportsDir}/fileInfo.jsonl JSONlines file.
      */
     public function check(string $dir, int $maxDepth = PHP_INT_MAX): bool {
-        echo "\n### Checking $dir...\n";
-
         $this->checkDir    = realpath($dir);
+        echo "\n### Checking $this->checkDir...\n\n";
         $this->hashes      = [];
         $this->startDepth  = $maxDepth;
         $this->noErrors    = true;
         $this->checkOutput = new OutputFormatter("$this->reportDir/fileInfo.jsonl", OutputFormatter::FORMAT_JSONLINES);
+        $iter              = new RecursiveDirectoryIterator($this->checkDir, RecursiveDirectoryIterator::SKIP_DOTS);
+        $iter              = new RecursiveIteratorIterator($iter, RecursiveIteratorIterator::SELF_FIRST);
+        $this->progressBar = new PB(0, iterator_count($iter));
+        unset($iter);
         $dirInfo           = FileInfo::fromPath($this->checkDir);
         $this->checkDir($dirInfo, $maxDepth);
         $dirInfo->save($this->checkOutput);
         $this->checkOutput->close();
 
-        echo "\n### Finished checking $dir\n";
+        echo "\n### Finished checking $this->checkDir\n";
         return $this->noErrors;
     }
 
     private function checkDir(FileInfo $dirInfo, int $depthToGo): void {
         // don't validate the top-level directory        
         if ($depthToGo < $this->startDepth) {
-            $dirInfo->assert($this->chkFunc->checkDirectoryNameValidity($dirInfo->filename), "Directory name contains invalid characters");
+            foreach ($this->checksDir as $check) {
+                try {
+                    $check($dirInfo);
+                } catch (Exception $e) {
+                    $fileInfo->error(get_class($e), $e->getMessage());
+                }
+            }
         }
 
-        echo "\nGenerating files list...\n";
         $files = scandir($dirInfo->path);
         if ($files === false) {
             self::die("getFileList: Failed opening directory $dir for reading");
         }
         $files = array_diff($files, ['.', '..']);
-        $dirInfo->assert(count($files) > 0, "Empty directory");
 
-        $pbFL               = new PB(0, count($files));
         $filenameDuplicates = [];
         foreach ($files as $entry) {
             echo "$entry\n";
+            $this->progressBar->advance();
+            echo "\n";
             $fileInfo      = FileInfo::fromPath("$dirInfo->path/$entry");
             $dirInfo->size += $fileInfo->size;
 
+            $entryStd = mb_strtolower($entry);
+            if (isset($filenameDuplicates[$entryStd])) {
+                $fileInfo->error("Duplicated file", "Duplicates with $filenameDuplicates[$entryStd] on case-insensitive filesystems");
+            }
+            $filenameDuplicates[$entryStd] = $entry;
+
             if ($fileInfo->type === 'dir' && $depthToGo > 0) {
+                echo "[entering $fileInfo->path]\n";
                 $this->checkDir($fileInfo, $depthToGo - 1);
-                echo "\nSubdirectory content checked... \n";
+                echo "[going back to $dirInfo->path]\n";
             } else {
-                $this->checkFile($fileInfo);
+                foreach ($this->checksFile as $check) {
+                    try {
+                        $check($fileInfo);
+                    } catch (Exception $e) {
+                        $fileInfo->error(get_class($e), $e->getMessage());
+                    }
+                }
+
+                $hash = $this->computeHash($fileInfo->path);
+                if (isset($this->hashes[$hash])) {
+                    $fileInfo->error("Duplicated file", "Same hash as " . $this->hashes[$hash]);
+                }
+                $this->hashes[$hash] = $fileInfo->path;
+
                 $dirInfo->filesCount++;
             }
 
-            $entryStd                      = mb_strtolower($entry);
-            $fileInfo->assert(!isset($filenameDuplicates[$entryStd]), "Duplicated filename within a directory", "Duplicated with " . ($filenameDuplicates[$entryStd] ?? ''));
-            $filenameDuplicates[$entryStd] = $entry;
-
             $fileInfo->save($this->checkOutput);
             $this->noErrors = $this->noErrors && count($fileInfo->errors) === 0;
-
-            $pbFL->advance();
-            echo "\n";
         }
         $this->noErrors = $this->noErrors && count($dirInfo->errors) === 0;
-    }
-
-    private function checkFile(FileInfo $fileInfo): void {
-        $fileInfo->assert($fileInfo->type === 'file', "Wrong file type");
-        $fileInfo->assert($this->chkFunc->checkFileNameValidity($fileInfo->filename), "Filename contains invalid characters");
-        $fileInfo->assert($this->chkFunc->checkBom($fileInfo->path), 'File contains a Byte Order Mark');
-        $fileInfo->appendErrors($this->chkFunc->checkMimeTypes($fileInfo->extension, $fileInfo->mime));
-        $fileInfo->appendErrors($this->chkFunc->checkAcceptedByArche($fileInfo->mime));
-
-        // duplicated files
-        $hash                = $this->chkFunc->computeHash($fileInfo->path);
-        $fileInfo->assert(!isset($this->hashes[$hash]), "Duplicated by hash", "Duplicated with " . ($this->hashes[$hash] ?? ''));
-        $this->hashes[$hash] = $fileInfo->path;
-
-        // zip checks
-        $isZip = in_array($fileInfo->extension, ['zip', 'gzip', '7zip']) ||
-            in_array($fileInfo->mime, ['application/zip', 'application/gzip', 'application/7zip']);
-        if ($isZip) {
-            $fileInfo->appendErrors($this->chkFunc->checkZipFile($fileInfo->path));
-        }
-        //check the PDF Files
-        $isPdf = $fileInfo->extension == "pdf" || $fileInfo->mime == "application/pdf";
-        if ($isPdf && $fileInfo->size > $this->cfg['pdfSize']) {
-            $fileInfo->assert(false, "PDF too large");
-        } elseif ($isPdf) {
-            $fileInfo->appendErrors($this->chkFunc->checkPdfFile($fileInfo->path));
-        }
-        //check the RAR files
-        $fileInfo->assert(!($fileInfo->extension === "rar" || $fileInfo->mime === "application/rar"), "RAR file - can't process");
-        //check PW protected XLSX, DOCX
-        $fileInfo->assert(!(in_array($fileInfo->extension, ["xlsx", "docx"]) && $fileInfo->mime === "application/CDFV2-encrypted"), "Encrypted DOCS/XLSX");
-        //check the bagit files
-        if (strpos(strtolower($fileInfo->directory), 'bagit') !== false) {
-            $fileInfo->appendErrors($this->chkFunc->checkBagitFile($fileInfo->path));
-        }
     }
 
     /**
@@ -215,7 +243,7 @@ class FileChecker {
 
         // HTML
         if ($html) {
-            $tmpl = file_get_contents(__DIR__ . '/../../../../template/index.html');
+            $tmpl = file_get_contents(__DIR__ . '/../../../../aux/index.html');
             $tmpl = explode('/*DATA*/', $tmpl);
             $fh   = fopen("$this->reportDir/index.html", 'w');
             fwrite($fh, $tmpl[0]);
@@ -257,5 +285,16 @@ class FileChecker {
             fwrite($to, fread($from, 1048576));
         }
         fclose($from);
+    }
+
+    private function computeHash(string $path): string {
+        $hash  = hash_init($this->hashAlgo);
+        $input = fopen($path, 'r');
+        while (!feof($input)) {
+            $buffer = (string) fread($input, 1048576);
+            hash_update($hash, $buffer);
+        }
+        fclose($input);
+        return hash_final($hash, false);
     }
 }

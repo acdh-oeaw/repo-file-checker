@@ -26,7 +26,9 @@
 
 namespace acdhOeaw\arche\fileChecker;
 
+use Exception;
 use RuntimeException;
+use ZipArchive;
 use finfo;
 
 /**
@@ -43,7 +45,7 @@ class FileInfo {
 
     static private $outputColumns = [
         self::OUTPUT_FILELIST => ['directory', 'filename', 'type', 'size', 'lastModified',
-            'size', 'extension', 'mime', 'valid'],
+            'extension', 'mime', 'valid'],
         self::OUTPUT_DIRLIST  => ['path', 'lastModified', 'valid'],
         self::OUTPUT_ERROR    => ['directory', 'filename', 'severity', 'errorType',
             'errorMessage'],
@@ -62,7 +64,7 @@ class FileInfo {
         if (!isset(self::$finfo)) {
             try {
                 self::$finfo = new finfo(FILEINFO_MIME_TYPE);
-            } catch (\Exception $ex) {
+            } catch (Exception $ex) {
                 echo "Failed to instantiate the finfo object. Falling back to mime_content_type() for getting file's MIME type.\n";
                 self::$finfo = false;
             }
@@ -79,10 +81,35 @@ class FileInfo {
             $fi->size      = filesize($path);
             $fi->extension = strtolower(substr($path, strrpos($path, '.') + 1));
             $fi->mime      = (self::$finfo ? self::$finfo->file($path) : mime_content_type($path)) ?: self::UNKNOWN_MIME;
+
+            // hacks for formats which can't be reliably recognized
+            if ($fi->mime === 'text/plain') {
+                $fi->mime = match ($fi->extension) {
+                    'csv' => 'text/csv',
+                    'tsv' => 'text/tsv',
+                    default => 'text/plain'
+                };
+            } elseif ($fi->mime === 'application/octet-stream' && $fi->extension === 'docx') {
+                self::recognizeDocx($fi);
+            }
         } elseif ($fi->type === 'dir') {
             $fi->filesCount = 0;
         }
         return $fi;
+    }
+
+    static private function recognizeDocx(self $fileInfo): void {
+        $archive = new ZipArchive();
+        $archive->open($fileInfo->path);
+        if ($archive->locateName('[Content_Types].xml') !== false) {
+            for ($i = 0; $i < $archive->count(); $i++) {
+                if (str_starts_with($archive->statIndex($i)['name'], 'word/')) {
+                    $fileInfo->mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                    break;
+                }
+            }
+        }
+        $archive->close();
     }
 
     static public function getCsvHeader(string $format): string {
@@ -108,26 +135,16 @@ class FileInfo {
      */
     public array $errors = [];
 
-    public function assert(bool $test, string $errorType = '',
-                           string $errorMessage = ''): void {
-        if ($test === false) {
-            $this->errors[] = new Error(Error::SEVERITY_ERROR, $errorType, $errorMessage);
-        }
+    public function error(string $errorType, string $errorMessage = ''): void {
+        $this->errors[] = new Error(Error::SEVERITY_ERROR, $errorType, $errorMessage);
     }
 
-    /**
-     * 
-     * @param null|Error|array $errors
-     * @return void
-     */
-    public function appendErrors(null | Error | array $errors): void {
-        if ($errors instanceof Error) {
-            $this->errors[] = $errors;
-        } elseif (is_array($errors)) {
-            foreach ($errors as $i) {
-                $this->errors[] = $i;
-            }
-        }
+    public function warning(string $errorType, string $errorMessage = ''): void {
+        $this->errors[] = new Error(Error::SEVERITY_WARNING, $errorType, $errorMessage);
+    }
+
+    public function info(string $errorType, string $errorMessage = ''): void {
+        $this->errors[] = new Error(Error::SEVERITY_INFO, $errorType, $errorMessage);
     }
 
     public function save(OutputFormatter $handle, ?string $format = null): void {

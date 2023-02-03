@@ -18,12 +18,14 @@
         "php": ">=8.0 <8.2",
         "ext-fileinfo": "*",
         "ext-zip": "*",
+        "ext-phar": "*",
+        "ext-zlib": "*",
+        "ext-bz2": "*",
         "guiguiboy/php-cli-progress-bar": "0.0.4",
         "smalot/pdfparser": "*",
         "zozlak/argparse": "^1",
-        "pear/archive_tar": "^1.4.14",
         "whikloj/bagittools": "dev-main",
-        "acdh-oeaw/arche-assets": "^3.9"
+        "acdh-oeaw/arche-assets": "^3.9.4"
     },
     "autoload": {
         "psr-4": {

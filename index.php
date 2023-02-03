@@ -34,10 +34,9 @@ while ($composerDir !== false && !file_exists("$composerDir/vendor")) {
 }
 require_once "$composerDir/vendor/autoload.php";
 
-$blacklist = ['app', 'apk', 'cfg'];
 $parser    = new ArgumentParser();
 $parser->addArgument('--tmpDir', default: sys_get_temp_dir(), help: "Temporary directory. If not specified, the system-wide temp dir is used.");
-$parser->addArgument('--signatureDir', default: __DIR__ . '/signatures', help: "Directory containing the DROID_SignatureFile XML file (default: %(default)s)");
+$parser->addArgument('--signatureDir', default: __DIR__ . '/aux', help: "Directory containing the DROID_SignatureFile XML file (default: %(default)s)");
 $parser->addArgument('--pdfSize', type: ArgumentParser::TYPE_INT, default: 80000000, help: "Maximum PDF file size in bytes (default: %(default)s)");
 $parser->addArgument('--csv', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, CSV reports are generated on top of the standard JSON linse output.");
 $parser->addArgument('--html', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, HTML reports are generated on top of the standard JSON lines output.");

@@ -26,12 +26,17 @@
 
 namespace acdhOeaw\arche\fileChecker;
 
+use PharData;
+use SimpleXMLElement;
+use UnexpectedValueException;
+use ZipArchive;
 use whikloj\BagItTools\Bag;
+use acdhOeaw\arche\fileChecker\attributes\CheckFile;
+use acdhOeaw\arche\fileChecker\attributes\CheckDir;
 
 class CheckFunctions {
 
-    const HASH_FALLBACK = 'sha1';
-    const HASH_DEFAULT  = 'xxh128';
+    const BAGIT_REGEX = '/^BagIt-Version: [0-9]+[.][0-9]+/';
 
     /**
      * Process the pronom xml for the MIMEtypes
@@ -67,38 +72,64 @@ class CheckFunctions {
      * 
      * @var array<string, array<string>>
      */
-    private array $mimeTypes = [];
-    private string $hashAlgo;
+    private array $extToMime = [];
+
+    /**
+     * 
+     * @var array<string, string>
+     */
+    private array $archeFormatsByExtension = [];
+
+    /**
+     * 
+     * @var array<string, string>
+     */
+    private array $archeFormatsByMime = [];
 
     /**
      * 
      * @var array<int, array<string>>
      */
     private array $bom = [];
+    private string $tmpDir;
 
     /**
      * 
      * @param array<string, mixed> $cfg
      */
     public function __construct(array $cfg) {
+        $this->tmpDir = $cfg['tmpDir'];
+
+        // read PRONOM
         $files = scandir($cfg['signatureDir']);
         $files = array_filter($files, fn($x) => str_ends_with(mb_strtolower($x), '.xml'));
         if (count($files) === 0) {
             FileChecker::die("Can't read signatures file - the signature directory is empty\n");
         }
         sort($files);
-        $this->mimeTypes = self::getMimeFromPronom($cfg['signatureDir'] . '/' . end($files));
-        if (count($this->mimeTypes) === 0) {
+        $this->extToMime = self::getMimeFromPronom($cfg['signatureDir'] . '/' . end($files));
+        if (count($this->extToMime) === 0) {
             FileChecker::die("Reading signatures file failed");
         }
+        // hacks
+        $this->extToMime['tsv'][]     = 'text/tsv';
+        $this->extToMime['geojson'][] = 'application/json';
+        $this->extToMime['avif'] = ['image/avif'];
+        $this->extToMime['webp'] = ['image/webp'];
 
-        $this->hashAlgo = $cfg['hashAlgo'] ?? self::HASH_DEFAULT;
-        if (!in_array($this->hashAlgo, hash_algos())) {
-            echo "Hashing algorithm $hash->algo unavailable, falling back to " . self::HASH_FALLBACK . "\n\n";
-            $this->hashAlgo = self::HASH_FALLBACK;
+        // read file formats from arche-assets
+        // in case of extension/mime conflicts be conservative and assign "accepted" instead of "preferred"
+        foreach (\acdhOeaw\ArcheFileFormats::getAll() as $i) {
+            foreach ($i->extensions as $j) {
+                $this->archeFormatsByExtension[$j] = min($i->ARCHE_conformance, $this->archeFormatsByExtension[$j] ?? 'preferred');
+            }
+            foreach ($i->MIME_type as $j) {
+                $this->archeFormatsByMime[$j] = min($i->ARCHE_conformance, $this->archeFormatsByMime[$j] ?? 'preferred');
+            }
         }
 
         // https://en.wikipedia.org/wiki/Byte_order_mark#Byte_order_marks_by_encoding
+        // constants but impossible to set as such because of non-character values
         $this->bom = [
             2 => [
                 chr(254) . chr(255), // UTF-16 BE
@@ -120,64 +151,114 @@ class CheckFunctions {
         ];
     }
 
+    #[CheckDir]
+    public function checkEmptyDir(FileInfo $fi): void {
+        if (count(scandir($fi->path)) === 0) {
+            $fi->error("Empty directory");
+        }
+    }
+
     /**
-     * 
      * Checks the bagit file, and if there is an error then add it to the errors variable
      * 
      * @param string $filename
      * @return array<Error>
      */
-    public function checkBagitFile(string $filename, bool $verbose = true): array {
-        $bag   = Bag::load($filename);
-        $valid = $bag->isValid();
-
-        $issues = $bag->getErrors();
-        if ($verbose) {
-            $issues = array_merge($issues, $bag->getWarnings());
+    #[CheckFile]
+    #[CheckDir]
+    public function checkBagitFile(FileInfo $fi): void {
+        $isBagIt = false;
+        if ($fi->type === 'dir') {
+            if (file_exists($fi->path . '/bagit.txt')) {
+                $isBagIt = preg_match(self::BAGIT_REGEX, file_get_contents($fi->path . '/bagit.txt', false, null, 0, 1000)) === 1;
+                if ($isBagIt) {
+                    $root = $fi->path;
+                }
+            }
+        } elseif (in_array($fi->extension, ['zip', 'tgz', 'gz', 'bz2', 'tar'])) {
+            try {
+                $archive = new PharData($fi->path);
+                foreach ($archive->getChildren() as $file) {
+                    if ($file->getFilename() === 'bagit.txt') {
+                        $isBagIt = preg_match(self::BAGIT_REGEX, $file->openFile()->fread(1000));
+                        break;
+                    }
+                }
+            } catch (UnexpectedValueException) {
+                
+            }
         }
+        if (!$isBagIt) {
+            return;
+        }
+        $fi->info("BagIt", "BagIt bag recognized");
+        if (isset($archive)) {
+            $root = $this->tmpDir . '/' . $archive->getFilename();
+            $archive->extractTo($this->tmpDir);
+        }
+        try {
+            $bag   = Bag::load($root);
+            $valid = $bag->isValid();
 
-        $dir      = dirname($filename);
-        $filename = basename($filename);
-        $issues   = array_map(
-            fn($x) => new Error(Error::SEVERITY_ERROR, 'BagIt_Error', $x['file'] . ': ' . $x['message']),
-                                $issues
-        );
+            foreach ($bag->getErrors() as $i) {
+                $fi->error("BagIt", $i['file'] . ': ' . $i['message']);
+            }
+            foreach ($bag->getWarnings() as $i) {
+                $fi->warning("BagIt", $i['file'] . ': ' . $i['message']);
+            }
+        } finally {
+            if (str_starts_with($root, $this->tmpDir)) {
+                system("rm -fR '$root'");
+            }
+        }
+    }
 
-        return $issues;
+    #[CheckDir]
+    #[CheckFile]
+    public function checkValidFilename(FileInfo $fi): void {
+        if (preg_match('/^[.]|[^-A-Za-z0-9_().]/', $fi->filename) === 1) {
+            $fi->error("Invalid filename");
+        }
     }
 
     /**
-     * 
-     * Checks the Directory Name validation
-     * 
-     * @param string $dir
-     * @return bool
-     */
-    public function checkDirectoryNameValidity(string $dirname): bool {
-        return preg_match('/[^-A-Za-z0-9_().]/', $dirname) === 0;
-    }
-
-    /**
-     * 
-     * Checks the filename validation
-     * 
-     * @param string $filename
-     * @return bool : true
-     */
-    public function checkFileNameValidity(string $filename): bool {
-        return preg_match('/[^-A-Za-z0-9_().]/', $filename) === 0;
-    }
-
-    /**
-     * 
      * Check the extension is valid for a given MIME type according to the
      * definitions read from the DROID signatures file.
      * 
+     * Look at the class constructor to check sam hacks against DROID/finfo
+     * MIME type recognition mismatches
      */
-    public function checkMimeTypes(string $extension, string $mime): ?Error {
-        $mime      = mb_strtolower($mime);
-        $validMime = $this->mimeTypes[mb_strtolower($extension)] ?? [];
-        return in_array($mime, $validMime) ? null : new Error(Error::SEVERITY_ERROR, "Extension doesn't match MIME type", "Extension: $extension, MIME type: $mime, allowed MIME types: " . implode(', ', $validMime));
+    #[CheckFile]
+    public function checkMimeMeetsExtension(FileInfo $fi): void {
+        $mime      = mb_strtolower($fi->mime);
+        $validMime = $this->extToMime[$fi->extension] ?? [];
+        if (!in_array($mime, $validMime)) {
+            $fi->error("File content doesn't match extension", "Extension: $fi->extension, MIME type: $fi->mime, MIME types allowed for this extension: " . implode(', ', $validMime));
+        }
+    }
+
+    /**
+     * Checks if odt/ods/docx/xlsx files are password protected
+     */
+    #[CheckFile]
+    public function checkPswdProtected(FileInfo $fi): void {
+        static $mime = [
+            'application/vnd.oasis.opendocument.spreadsheet',
+            'application/vnd.oasis.opendocument.text'
+        ];
+        if ($fi->mime === 'application/CDFV2-encrypted') {
+            $fi->error("Password protected file");
+        } elseif (in_array($fi->extension, ['odt', 'ods']) || in_array($fi->mime, $mime)) {
+            $archive   = new ZipArchive();
+            $archive->open($fi->path);
+            $xml       = new SimpleXMLElement(fread($archive->getStream('META-INF/manifest.xml'), 10485760));
+            $xml->registerXPathNamespace('manifest', 'urn:oasis:names:tc:opendocument:xmlns:manifest:1.0');
+            $encrypted = $xml->xpath('//manifest:encryption-data');
+            if (is_array($encrypted) && count($encrypted) > 0) {
+                $fi->error("Password protected file");
+            }
+            $archive->close();
+        }
     }
 
     /**
@@ -187,14 +268,17 @@ class CheckFunctions {
      * @param string $file
      * @return Error|null
      */
-    public function checkPdfFile(string $file): ?Error {
+    #[CheckFile]
+    public function checkPdfFile(FileInfo $fi): void {
+        if ($fi->extension !== 'pdf' && $fi->mime !== 'application/pdf') {
+            return;
+        }
         try {
             $parser = new \Smalot\PdfParser\Parser();
-            $parser->parseFile($file);
+            $parser->parseFile($fi->path);
         } catch (\Exception $ex) {
-            return new Error(Error::SEVERITY_ERROR, "PDF error", $ex->getMessage());
+            $fi->error("PDF", $ex->getMessage());
         }
-        return null;
     }
 
     /**
@@ -204,51 +288,46 @@ class CheckFunctions {
      * If we have a pw protected one then we will put it to the $pwZips array
      * 
      */
-    public function checkZipFile(string $zipFile): ?Error {
-        $za = new \ZipArchive();
-        if ($za->open($zipFile) !== TRUE) {
-            return new Error(Error::SEVERITY_ERROR, "Zip_Open_Error");
+    #[CheckFile]
+    public function checkZipFile(FileInfo $fi): void {
+        if ($fi->extension !== 'zip' && $fi->mime !== "application/zip") {
+            return;
+        }
+        $za = new ZipArchive();
+        if ($za->open($fi->path) !== true) {
+            $fi->error("Zip", $za->getStatusString());
+            return;
         }
         $filesCount = $za->count();
         for ($i = 0; $i < $filesCount; $i++) {
             $res = $za->getStream($za->statIndex($i)['name']);
             if ($res === false) {
-                return new Error(Error::SEVERITY_ERROR, "Zip_Error", $za->getStatusString());
+                $fi->error("Zip error", $za->getStatusString());
             }
         }
-        return null;
     }
 
-    public function checkAcceptedByArche(string $mime): ?Error {
-        $def = \acdhOeaw\ArcheFileFormats::getByMime($mime);
-        if ($def === null || empty($def->Long_term_format)) {
-            return new Error(Error::SEVERITY_ERROR, 'File format not accepted by ARCHE');
+    #[CheckFile]
+    public function checkAcceptedByArche(FileInfo $fi): void {
+        $ext   = $this->archeFormatsByExtension[$fi->extension] ?? null;
+        $mime  = $this->archeFormatsByMime[$fi->mime] ?? null;
+        $valid = min($ext, $mime);
+        $ext   = !empty($ext) ? $ext : 'not accepted';
+        $mime  = !empty($mime) ? $mime : 'not accepted';
+        if ($valid === null || $valid === '') {
+            $fi->error("File format not accepted", "MIME $fi->mime: $mime, extension $fi->extension: $ext");
+        } elseif ($valid === 'accepted') {
+            $fi->warning("File format not preferred", "MIME $fi->mime: $mime, extension $fi->extension: $ext");
         }
-        if ($def->Long_term_format === 'yes') {
-            return null;
-        }
-        return match ($def->Long_term_format) {
-            'unsure' => new Error('WARNING', 'Not sure if the file format is accepted by ARCHE'),
-            'restricted' => new Error('WARNING', 'Restricted file format'),
-            default => new Error(Error::SEVERITY_ERROR, 'File format not accepted by ARCHE'),
-        };
     }
 
-    public function checkBom(string $path): bool {
-        $fh      = fopen($path, 'r');
+    #[CheckFile]
+    public function checkBom(FileInfo $fi): void {
+        $fh      = fopen($fi->path, 'r');
         $content = fread($fh, 4);
         fclose($fh);
-        return !(in_array($content, $this->bom[4]) || in_array(substr($content, 0, 3), $this->bom[3]) || in_array(substr($content, 0, 2), $this->bom[2]));
-    }
-
-    public function computeHash(string $path): string {
-        $hash  = hash_init($this->hashAlgo);
-        $input = fopen($path, 'r');
-        while (!feof($input)) {
-            $buffer = (string) fread($input, 1048576);
-            hash_update($hash, $buffer);
+        if (in_array($content, $this->bom[4]) || in_array(substr($content, 0, 3), $this->bom[3]) || in_array(substr($content, 0, 2), $this->bom[2])) {
+            $fi->error('File contains Byte Order Mark');
         }
-        fclose($input);
-        return hash_final($hash, false);
     }
 }

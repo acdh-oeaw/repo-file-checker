@@ -1,8 +1,5 @@
-phpMussel\vault\config.ini
 /composer.lock
 /vendor
-/temp
-/tmp
-/config.ini
-/reports
+/tests/reports
+/tests/tmp
 /nbproject
