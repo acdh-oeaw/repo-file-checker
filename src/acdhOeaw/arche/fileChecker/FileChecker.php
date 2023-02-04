@@ -203,9 +203,9 @@ class FileChecker {
             }
 
             $fileInfo->save($this->checkOutput);
-            $this->noErrors = $this->noErrors && count($fileInfo->errors) === 0;
+            $this->noErrors = $this->noErrors && $fileInfo->valid;
         }
-        $this->noErrors = $this->noErrors && count($dirInfo->errors) === 0;
+        $this->noErrors = $this->noErrors && $dirInfo->valid;
     }
 
     /**

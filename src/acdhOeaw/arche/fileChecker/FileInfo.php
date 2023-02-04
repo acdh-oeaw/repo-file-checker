@@ -77,6 +77,7 @@ class FileInfo {
         $fi->type         = filetype($path);
         $fi->size         = 0;
         $fi->lastModified = date("Y-m-d H:i:s", filemtime($path));
+        $fi->valid        = true;
         if ($fi->type === 'file') {
             $fi->size      = filesize($path);
             $fi->extension = strtolower(substr($path, strrpos($path, '.') + 1));
@@ -89,6 +90,8 @@ class FileInfo {
                     'tsv' => 'text/tsv',
                     default => 'text/plain'
                 };
+            } elseif ($fi->mime === 'text/xml' && $fi->extension !== 'xml') {
+                $fi->mime = 'application/xml';
             } elseif ($fi->mime === 'application/octet-stream' && $fi->extension === 'docx') {
                 self::recognizeDocx($fi);
             }
@@ -128,6 +131,7 @@ class FileInfo {
     public string $mime;
     public int $size;
     public int $filesCount;
+    public bool $valid;
 
     /**
      * 
@@ -137,10 +141,12 @@ class FileInfo {
 
     public function error(string $errorType, string $errorMessage = ''): void {
         $this->errors[] = new Error(Error::SEVERITY_ERROR, $errorType, $errorMessage);
+        $this->valid    = false;
     }
 
     public function warning(string $errorType, string $errorMessage = ''): void {
         $this->errors[] = new Error(Error::SEVERITY_WARNING, $errorType, $errorMessage);
+        $this->valid    = false;
     }
 
     public function info(string $errorType, string $errorMessage = ''): void {
@@ -169,10 +175,7 @@ class FileInfo {
         $cols = self::$outputColumns[$format] ?? throw new RuntimeException("Unknown output format $format");
         $data = [];
         foreach ($cols as $i) {
-            $data[$i] = match ($i) {
-                'valid' => count($this->errors) === 0,
-                default => $this->$i ?? '',
-            };
+            $data[$i] = $this->$i ?? '';
         }
         if ($format !== self::OUTPUT_ERROR) {
             $handle->write($data);
