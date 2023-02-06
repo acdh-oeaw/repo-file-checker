@@ -154,7 +154,7 @@ class CheckFunctions {
 
     #[CheckDir]
     public function checkEmptyDir(FileInfo $fi): void {
-        if (count(scandir($fi->path)) === 0) {
+        if (count(scandir($fi->path)) <= 2) {
             $fi->error("Empty directory");
         }
     }
