@@ -144,7 +144,7 @@ class FileChecker {
         $dirInfo->save($this->checkOutput);
         $this->checkOutput->close();
 
-        echo "\n### Finished checking $this->checkDir\n";
+        echo "\n### Finished checking $this->checkDir - " . ($this->noErrors ? 'no errors found' : 'errors found') . "\n";
         return $this->noErrors;
     }
 
@@ -217,7 +217,7 @@ class FileChecker {
      * @return void
      */
     public function generateReports(bool $csv, bool $html): void {
-        echo "\n### Generating reports...\n";
+        echo "\n### Writing reports to $this->reportDir\n";
 
         // JSON and CSV
         $infh = fopen("$this->reportDir/fileInfo.jsonl", 'r');
