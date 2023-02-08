@@ -91,8 +91,9 @@ class CheckFunctions {
      * 
      * @var array<int, array<string>>
      */
-    private array $bom = [];
+    private array $bom          = [];
     private string $tmpDir;
+    private string $gdalCalcPath = '/usr/bin/gdal_calc.py';
 
     /**
      * 
@@ -100,6 +101,13 @@ class CheckFunctions {
      */
     public function __construct(array $cfg) {
         $this->tmpDir = $cfg['tmpDir'];
+        if (isset($cfg['gdalCalcPath'])) {
+            $this->gdalCalcPath = $cfg['gdalCalcPath'];
+        }
+        if (!file_exists($this->gdalCalcPath)) {
+            $this->gdalCalcPath = '';
+            echo "WARNING: gdal_calc.py not found, images won't be checked for corruption\n";
+        }
 
         // read PRONOM
         $files = scandir($cfg['signatureDir']);
@@ -156,6 +164,41 @@ class CheckFunctions {
     public function checkEmptyDir(FileInfo $fi): void {
         if (count(scandir($fi->path)) <= 2) {
             $fi->error("Empty directory");
+        }
+    }
+
+    /**
+     * Verifies if an image has no errors.
+     * 
+     * Unfortunatelly there's no good PHP library for that - gd doesn't support TIFF
+     * and Imagick just reads whatever it can without throwing any error (even on
+     * extremally corrupted images).
+     * 
+     * The best tool turns out to be any GDAL script. They can handle not-geo-referenced
+     * images and complain on any errors. Of course this requires the runtime
+     * environment to provide gdal-bin :(
+     * 
+     * @param FileInfo $fi
+     * @return void
+     */
+    #[CheckFile]
+    public function checkRasterImage(FileInfo $fi): void {
+        static $imgMime = ['image/tiff', 'image/png', 'image/jpeg', 'image/gif'];
+        if (!empty($this->gdalCalcPath) && !in_array($fi->mime, $imgMime)) {
+            return;
+        }
+        $cmd     = sprintf(
+            "%s --overwrite --quiet -A %s --calc A --outfile %s --co COMPRESS=LZW 2>&1",
+            escapeshellcmd($this->gdalCalcPath),
+                           escapeshellarg($fi->path),
+                                          escapeshellarg("$this->tmpDir/tmp.tif")
+        );
+        $output  = [];
+        $retCode = null;
+        exec($cmd, $output, $retCode);
+        if ($retCode !== 0) {
+            $msg = implode("\n", array_filter($output, fn($x) => str_starts_with($x, 'ERROR')));
+            $fi->error("Corrupted image", $msg);
         }
     }
 
