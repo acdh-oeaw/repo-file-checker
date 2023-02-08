@@ -216,14 +216,14 @@ class CheckFunctions {
 
     #[CheckDir]
     public function checkValidDirname(FileInfo $fi): void {
-        if (preg_match('/^[A-Za-z0-9][-A-Za-z0-9_]?[A-Za-z0-9]$/', $fi->filename) !== 1) {
+        if (preg_match('/^[A-Za-z0-9][-_A-Za-z0-9]*[A-Za-z0-9]$/', $fi->filename) !== 1) {
             $fi->error("Invalid filename");
         }
     }
 
     #[CheckFile]
     public function checkValidFilename(FileInfo $fi): void {
-        if (preg_match('/^[A-Za-z0-9][-A-Za-z0-9_]?[A-Za-z0-9][.][A-Za-z0-9]+$/', $fi->filename) !== 1) {
+        if (preg_match('/^[A-Za-z0-9][-_A-Za-z0-9]*[A-Za-z0-9][.][A-Za-z0-9]+$/', $fi->filename) !== 1) {
             $fi->error("Invalid filename");
         }
     }
