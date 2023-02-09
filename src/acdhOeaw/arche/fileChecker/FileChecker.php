@@ -33,7 +33,6 @@ use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use ProgressBar\Manager as PB;
 use acdhOeaw\arche\fileChecker\CheckFunctions;
-use acdhOeaw\arche\fileChecker\JsonHandler;
 use acdhOeaw\arche\fileChecker\attributes\CheckFile;
 use acdhOeaw\arche\fileChecker\attributes\CheckDir;
 
@@ -52,7 +51,7 @@ class FileChecker {
     private string $signatureDir;
     private string $tmplDir;
     private string $checkDir;
-    private JsonHandler $jsonHandler;
+    private string $matchRegex;
     private CheckFunctions $chkFunc;
     private int $startDepth;
     private bool $noErrors;
@@ -89,12 +88,13 @@ class FileChecker {
      * @param array<string, mixed> $config
      */
     public function __construct(array $config) {
-        $this->chkFunc = new CheckFunctions($config);
-        $this->cfg     = $config;
-        $this->tmplDir = realpath(__DIR__ . '/../../../../template');
+        $this->chkFunc    = new CheckFunctions($config);
+        $this->cfg        = $config;
+        $this->tmplDir    = realpath(__DIR__ . '/../../../../template');
+        $this->matchRegex = isset($config['match']) ? "`" . $config['match'] . "`" : '';
 
         $this->tmpDir       = $config['tmpDir'];
-        $this->reportDir    = $config['reportDir'];
+        $this->reportDir    = realpath($config['reportDir']);
         $this->signatureDir = $config['signatureDir'];
         $this->checkDirExistsWritable($this->tmpDir, 'tmpDir');
         $this->checkDirExistsWritable($this->reportDir, 'reportDir');
@@ -130,16 +130,27 @@ class FileChecker {
      */
     public function check(string $dir, int $maxDepth = PHP_INT_MAX): bool {
         $this->checkDir    = realpath($dir);
-        echo "\n### Checking $this->checkDir...\n\n";
         $this->hashes      = [];
         $this->startDepth  = $maxDepth;
         $this->noErrors    = true;
         $this->checkOutput = new OutputFormatter("$this->reportDir/fileInfo.jsonl", OutputFormatter::FORMAT_JSONLINES);
-        $iter              = new RecursiveDirectoryIterator($this->checkDir, RecursiveDirectoryIterator::SKIP_DOTS);
-        $iter              = new RecursiveIteratorIterator($iter, RecursiveIteratorIterator::SELF_FIRST);
-        $this->progressBar = new PB(0, iterator_count($iter));
+
+        echo "\nComputing the number of files and directories to analyze\n";
+        $iter = new RecursiveDirectoryIterator($this->checkDir, RecursiveDirectoryIterator::SKIP_DOTS);
+        $iter = new RecursiveIteratorIterator($iter, RecursiveIteratorIterator::SELF_FIRST);
+        if (empty($this->matchRegex)) {
+            $count = iterator_count($iter);
+        } else {
+            $count = 0;
+            foreach ($iter as $i) {
+                $count += (int) preg_match($this->matchRegex, basename($i));
+            }
+        }
         unset($iter);
-        $dirInfo           = FileInfo::fromPath($this->checkDir);
+        $this->progressBar = new PB(0, $count);
+
+        echo "\n### Checking $this->checkDir...\n";
+        $dirInfo = FileInfo::fromPath($this->checkDir);
         $this->checkDir($dirInfo, $maxDepth);
         $dirInfo->save($this->checkOutput);
         $this->checkOutput->close();
@@ -150,7 +161,7 @@ class FileChecker {
 
     private function checkDir(FileInfo $dirInfo, int $depthToGo): void {
         // don't validate the top-level directory        
-        if ($depthToGo < $this->startDepth) {
+        if ($depthToGo < $this->startDepth && (empty($this->matchRegex) || preg_match($this->matchRegex, $dirInfo->filename))) {
             foreach ($this->checksDir as $check) {
                 try {
                     $check($dirInfo);
@@ -168,10 +179,19 @@ class FileChecker {
 
         $filenameDuplicates = [];
         foreach ($files as $entry) {
+            $path  = "$dirInfo->path/$entry";
+            $match = empty($this->matchRegex) || preg_match($this->matchRegex, $entry) === 1;
+            if (!$match) {
+                if (is_dir($path)) {
+                    $this->checkDir(FileInfo::fromPath($path), $depthToGo - 1);
+                }
+                continue;
+            }
+
             echo "$entry\n";
             $this->progressBar->advance();
             echo "\n";
-            $fileInfo      = FileInfo::fromPath("$dirInfo->path/$entry");
+            $fileInfo      = FileInfo::fromPath($path);
             $dirInfo->size += $fileInfo->size;
 
             $entryStd = mb_strtolower($entry);
