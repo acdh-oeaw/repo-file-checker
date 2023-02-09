@@ -22,7 +22,8 @@
 * [BagIt](https://en.wikipedia.org/wiki/BagIt) archives are correct (based on checks performed by the [whikloj/bagittools](https://github.com/whikloj/BagItTools) library; bagit archives can be uncompressed of zip/tar gz/tar bz2 files).
 * ZIP, XLSX, DOCX, ODS, ODT and PDF files aren't password protected.
   * To avoid memory limit problems only files up to a configuration-determined size are checked.
-* XML files providing schema information are validated against the schema.
+* XML files provide XML declaration and schema declaration and validate against the schema.
+* Image files aren't corrupted.
 * No duplicated files (compared by hash).
 * No filenames conflicts on case-insensitive filesystems.
 		  
@@ -138,10 +139,5 @@ Remarks:
 
 # Test Files:
 
-You can find files for testing in the _testFiles folder. We have files for the following cases:
-  - duplicates -> duplicated files
-  - goodFiles -> every file is okay, report will not contain any errors
-  - pwProtected -> there is a password protected zip file in the folder.
-  - wrongContent -> here we removed the PDF text from the PDF file source. And we renamed the gif file to png.
-  - wrongFilename -> the filename contains not legal characters
-  - wrongMIME -> wrong MIME types
+Test files are provided in the `tests/data` folder.
+
