@@ -55,6 +55,7 @@ class FileChecker {
     private CheckFunctions $chkFunc;
     private int $startDepth;
     private bool $noErrors;
+    private bool $skipWarnings;
     private OutputFormatter $checkOutput;
     private string $hashAlgo;
     private PB $progressBar;
@@ -88,10 +89,11 @@ class FileChecker {
      * @param array<string, mixed> $config
      */
     public function __construct(array $config) {
-        $this->chkFunc    = new CheckFunctions($config);
-        $this->cfg        = $config;
-        $this->tmplDir    = realpath(__DIR__ . '/../../../../template');
-        $this->matchRegex = isset($config['match']) ? "`" . $config['match'] . "`" : '';
+        $this->chkFunc      = new CheckFunctions($config);
+        $this->cfg          = $config;
+        $this->tmplDir      = realpath(__DIR__ . '/../../../../template');
+        $this->matchRegex   = isset($config['match']) ? "`" . $config['match'] . "`" : '';
+        $this->skipWarnings = (bool) ($config['skipWarnings'] ?? false);
 
         $this->tmpDir       = $config['tmpDir'];
         $this->reportDir    = realpath($config['reportDir']);
@@ -223,9 +225,9 @@ class FileChecker {
             }
 
             $fileInfo->save($this->checkOutput);
-            $this->noErrors = $this->noErrors && $fileInfo->valid;
+            $this->noErrors = $this->noErrors && $fileInfo->isValid($this->skipWarnings);
         }
-        $this->noErrors = $this->noErrors && $dirInfo->valid;
+        $this->noErrors = $this->noErrors && $dirInfo->isValid($this->skipWarnings);
     }
 
     /**

@@ -341,7 +341,6 @@ class CheckFunctions {
         }
         if (isset($schemas[$rootNmsp])) {
             $schemaLocation = $this->resolveUrl($schemas[$rootNmsp], $fi->directory, $xml->documentURI);
-            echo "schemaLocation: $schemaLocation\n";
             if (empty($schemaLocation)) {
                 $fi->error('XML validation', "Can't resolve schema location $schemas[$rootNmsp]");
             } else {

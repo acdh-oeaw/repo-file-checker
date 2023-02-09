@@ -42,6 +42,7 @@ $parser->addArgument('--csv', action: ArgumentParser::ACTION_STORE_TRUE, help: "
 $parser->addArgument('--html', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, HTML reports are generated on top of the standard JSON lines output.");
 $parser->addArgument('--overwrite', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, the report is generated directly in the reportDir without creation of a timestamp-based directory.");
 $parser->addArgument('--match', help: "If provided, only files and directories matching a given regular expression are being checked. If the directory check is skipped, the directory content is still being checked.");
+$parser->addArgument('--skipWarnings', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, only errors cause a non-zero script return value.");
 $parser->addArgument('directoryToCheck');
 $parser->addArgument('reportDir');
 $args   = $parser->parseArgs();

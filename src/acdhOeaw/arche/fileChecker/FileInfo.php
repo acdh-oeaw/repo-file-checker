@@ -153,6 +153,15 @@ class FileInfo {
         $this->errors[] = new Error(Error::SEVERITY_INFO, $errorType, $errorMessage);
     }
 
+    public function isValid(bool $skipWarnings): bool {
+        if ($skipWarnings) {
+            $callback = fn(Error $x) => $x->severity === Error::SEVERITY_ERROR;
+        } else {
+            $callback = fn(Error $x) => $x->severity !== Error::SEVERITY_INFO;
+        }
+        return array_sum(array_map($callback, $this->errors)) === 0;
+    }
+
     public function save(OutputFormatter $handle, ?string $format = null): void {
         // just dump object as it is
         if ($format === null) {
