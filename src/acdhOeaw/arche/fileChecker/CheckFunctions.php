@@ -291,32 +291,69 @@ class CheckFunctions {
         }
     }
 
+    /**
+     * Checks XML files:
+     * 
+     * - loads the file with DTD validation turned on
+     * - checks if the file contains XML declaration
+     * - checks if the root element defines a schema location for its own namespace
+     * - if the schema location is provided, validates against the schema
+     */
     #[CheckFile]
     public function checkXml(FileInfo $fi): void {
-        static $schemaAttr = ['noNamespaceSchemaLocation', 'schemaLocation'];
-        if (!in_array($fi->mime, ['text/xml', 'application/xml'])) {
+        if (!in_array($fi->mime, ['text/xml', 'application/xml']) && !($fi->mime === 'text/plain' && $fi->extension === 'xml')) {
             return;
         }
-        $prev = libxml_use_internal_errors(true);
-        $xml  = new DOMDocument();
-        $res  = $xml->load($fi->path, LIBXML_DTDVALID || LIBXML_BIGLINES || LIBXML_COMPACT);
+        $prev                 = libxml_use_internal_errors(true);
+        $xml                  = new DOMDocument();
+        $xml->validateOnParse = true;
+
+        // parse with DTD validation turned on
+        $res = $xml->load($fi->path, LIBXML_DTDLOAD | LIBXML_DTDVALID | LIBXML_BIGLINES | LIBXML_COMPACT);
         if ($res === false) {
             $fi->error("XML validation", "Failed to parse the XML file with: " . print_r(libxml_get_last_error(), true));
+            return;
         }
-        foreach ($xml->firstChild->attributes as $attr) {
-            if ($attr->namespaceURI === 'http://www.w3.org/2001/XMLSchema-instance' && in_array($attr->localName, $schemaAttr)) {
-                $schemaLocation = preg_replace('/\\s.*$/', '', trim($attr->nodeValue));
-                if ($attr->localName === 'noNamespaceSchemaLocation' && substr($schemaLocation, 0, 1) !== '/') {
-                    $schemaLocation = $fi->directory . '/' . $schemaLocation;
-                }
-                $res = $xml->schemaValidate($schemaLocation);
-                if ($res) {
-                    $fi->info('XML validation', "Successfully validated against $schemaLocation");
-                } else {
-                    $fi->error('XML validation', "Schema validation error: " . print_r(libxml_get_last_error(), true));
+
+        // basic checks
+        if ($fi->mime === "text/plain") {
+            $fi->error("XML validation", "Missing XML declaration");
+        } elseif (empty($xml->encoding)) {
+            $fi->warning("XML validation", "Encoding not defined");
+        }
+
+        // find schemas defined in the root element
+        $schemas = [];
+        foreach ($xml->documentElement->attributes as $attr) {
+            if ($attr->namespaceURI === 'http://www.w3.org/2001/XMLSchema-instance') {
+                if ($attr->localName === 'noNamespaceSchemaLocation') {
+                    $schemas[''] = trim($attr->nodeValue);
+                } elseif ($attr->localName === 'schemaLocation') {
+                    $tmp              = explode(' ', preg_replace('/\\s+/', ' ', trim($attr->nodeValue)));
+                    $schemas[$tmp[0]] = $tmp[1] ?? '';
                 }
             }
         }
+        // validate the root element against its schema
+        $rootNmsp = (string) $xml->documentElement->namespaceURI;
+        if (!isset($schemas[$rootNmsp]) && !($rootNmsp === 'http://www.w3.org/2001/XMLSchema' && $xml->documentElement->localName === 'schema')) {
+            $fi->warning('XML validation', "Missing schema location for the root element");
+        }
+        if (isset($schemas[$rootNmsp])) {
+            $schemaLocation = $this->resolveUrl($schemas[$rootNmsp], $fi->directory, $xml->documentURI);
+            echo "schemaLocation: $schemaLocation\n";
+            if (empty($schemaLocation)) {
+                $fi->error('XML validation', "Can't resolve schema location $schemas[$rootNmsp]");
+            } else {
+                $res = $xml->schemaValidate($schemaLocation);
+                if ($res) {
+                    $fi->info('XML validation', "Schema successfully validated against $schemaLocation");
+                } else {
+                    $fi->error('XML validation', "Schema validation against $schemaLocation failed with: " . print_r(libxml_get_last_error(), true));
+                }
+            }
+        }
+
         libxml_use_internal_errors($prev);
     }
 
@@ -412,5 +449,38 @@ class CheckFunctions {
         if (in_array($content, $this->bom[4]) || in_array(substr($content, 0, 3), $this->bom[3]) || in_array(substr($content, 0, 2), $this->bom[2])) {
             $fi->error('File contains Byte Order Mark');
         }
+    }
+
+    /**
+     * Tries to resolve the URL to something which can be read with fopen()
+     * or file_get_contents.
+     * 
+     * In case of a failure and empty string is returned.
+     */
+    private function resolveUrl(string $url, ?string $curDir = null,
+                                ?string $baseUrl = null): string {
+        $curDir ??= getcwd();
+
+        $ret = "$curDir/$url";
+        if (file_exists($ret)) {
+            return $ret;
+        }
+
+        if (file_exists($url)) {
+            return $url;
+        }
+
+        $backup = error_reporting(E_ERROR);
+        $ret    = ((string) $baseUrl) . $url;
+        $fh     = fopen($ret, 'r');
+        if ($fh === false) {
+            $ret = $url;
+            $fh  = fopen($ret, 'r');
+            if ($fh === false) {
+                $ret = '';
+            }
+        }
+        error_reporting($backup);
+        return $ret;
     }
 }
