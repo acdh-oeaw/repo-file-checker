@@ -149,13 +149,13 @@ class FileChecker {
         unset($iter);
         $this->progressBar = new PB(0, $count);
 
-        echo "\n### Checking $this->checkDir...\n";
+        echo "\n### Checking $this->checkDir...\n\n";
         $dirInfo = FileInfo::fromPath($this->checkDir);
         $this->checkDir($dirInfo, $maxDepth);
         $dirInfo->save($this->checkOutput);
         $this->checkOutput->close();
 
-        echo "\n### Finished checking $this->checkDir - " . ($this->noErrors ? 'no errors found' : 'errors found') . "\n";
+        echo "### Finished checking $this->checkDir - " . ($this->noErrors ? 'no errors found' : 'errors found') . "\n";
         return $this->noErrors;
     }
 
