@@ -187,11 +187,12 @@ class CheckFunctions {
         if (!empty($this->gdalCalcPath) && !in_array($fi->mime, $imgMime)) {
             return;
         }
+        $tmpfile = escapeshellarg("$this->tmpDir/tmp.tif");
         $cmd     = sprintf(
             "%s --overwrite --quiet -A %s --calc A --outfile %s --co COMPRESS=LZW 2>&1",
             escapeshellcmd($this->gdalCalcPath),
                            escapeshellarg($fi->path),
-                                          escapeshellarg("$this->tmpDir/tmp.tif")
+                                          $tmpfile
         );
         $output  = [];
         $retCode = null;
@@ -199,6 +200,9 @@ class CheckFunctions {
         if ($retCode !== 0) {
             $msg = implode("\n", array_filter($output, fn($x) => str_starts_with($x, 'ERROR')));
             $fi->error("Corrupted image", $msg);
+        }
+        if (file_exists($tmpfile)) {
+            unlink($tmpfile);
         }
     }
 
