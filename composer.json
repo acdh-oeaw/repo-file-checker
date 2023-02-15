@@ -25,7 +25,8 @@
         "smalot/pdfparser": "*",
         "zozlak/argparse": "^1",
         "whikloj/bagittools": "^4.2.3",
-        "acdh-oeaw/arche-assets": "^3.9.4"
+        "acdh-oeaw/arche-assets": "^3.9.4",
+        "acdh-oeaw/arche-lib-ingest": "^3.5"
     },
     "autoload": {
         "psr-4": {
