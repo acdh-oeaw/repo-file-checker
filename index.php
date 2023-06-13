@@ -50,7 +50,7 @@ $parser->addArgument('--redmineToken');
 $parser->addArgument('--redmineApiUrl', default: "https://redmine.acdh.oeaw.ac.at");
 $parser->addArgument('--redmineDone', type: ArgumentParser::TYPE_INT, default: 10, help: "Percent done value set on the redmine issue in case of unsuccessful check.");
 $parser->addArgument('--redmineMessage', default: '', help: "Message posted as a note in the redmine issue. If not provided, a default value is used.");
-$parser->addArgument('--redmineAppend', type: ArgumentParser::ACTION_STORE_TRUE, help: "Should --redmineMessage be appended to the default message?");
+$parser->addArgument('--redmineAppend', action: ArgumentParser::ACTION_STORE_TRUE, help: "Should --redmineMessage be appended to the default message?");
 $parser->addArgument('--skipWarnings', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, only errors cause a non-zero script return value.");
 $parser->addArgument('directoryToCheck');
 $parser->addArgument('reportDir');
