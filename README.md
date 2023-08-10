@@ -12,7 +12,7 @@
 * Can also create HTML reports from the generated JSON file.
 * When run as a docker container, performs antivirus check on files.
 
-### Implemnted error checks
+### Implemented error checks
 
 * File and directory names don't contain forbidden characters.
 * File extension matches MIME type deteced based on the file content
