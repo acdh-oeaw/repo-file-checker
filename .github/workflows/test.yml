@@ -15,6 +15,6 @@ jobs:
       # the filechecker should have non-zero error code
       run: |
         RET=1
-        mkdir -p tests/reports && bin/arche-filechecker --tmpDir tests/tmp tests/data/ tests/reports/ || RET=0
+        mkdir -p tests/reports && bin/arche-filechecker --tmpDir /tmp tests/data/ tests/reports/ || RET=0
         exit $RET
 
