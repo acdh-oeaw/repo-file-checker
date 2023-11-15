@@ -1,8 +1,6 @@
-﻿# repo_file_checker 
+﻿# repo-filechecker 
 
-## Updated: 2022-11-21
-
-## Functionality:
+## Functionality
 
 * Analyzes the data structure and creates a json/ndjson output providing:
   * Files list
@@ -41,9 +39,26 @@
 
 * Install [docker](https://www.docker.com/).
 
-# Usage
+### On repo-ingestion@hephaistos
 
-## Locally
+Nothing to be done. It is installed there already.
+
+## Usage
+
+### On repo-ingestion@hephaistos
+
+First login to repo-ingestion@hephaistos and run `screen ./login.sh`.
+
+* filechecker
+  ```bash
+  /ARCHE/vendor/bin/arche-filechecker --csv --html directoryToBeProcessed directoryToWriteReportsInto
+  ```
+* virus scan
+  ```bash
+  clamscan --infected directoryToScan
+  ```
+
+### Locally
 
 ```bash
 vendor/bin/arche-filechecker --csv --html directoryToBeProcessed directoryToWriteReportsInto
@@ -59,20 +74,7 @@ Remarks:
   ```
 * If you have [bagit](https://en.wikipedia.org/wiki/BagIt) files, place them into a folder called `bagit` and also compress them into a tgz file.
 
-## On repo-ingestion@hephaistos
-
-First login to repo-ingestion@hephaistos and run `screen ./login.sh`.
-
-* filechecker
-  ```bash
-  /ARCHE/vendor/bin/arche-filechecker --csv --html directoryToBeProcessed directoryToWriteReportsInto
-  ```
-* virus scan
-  ```bash
-  clamscan --infected directoryToScan
-  ```
-
-## As a docker container
+### As a docker container
 
 * Consider downloading fresh signatures for the antivirus software
   ```bash
@@ -137,7 +139,6 @@ Remarks:
       docker exec --user $UID filechecker /opt/filechecker/bin/arche-filechecker --csv --html /data /reports
       ```
 
-# Test Files:
+## Test Files:
 
-Test files are provided in the `tests/data` folder.
-
+Test files are stored in the `tests/data` folder.
