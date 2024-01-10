@@ -12,5 +12,4 @@ COPY . /opt/filechecker
 RUN cd /opt/filechecker &&\
     composer update -o --no-dev
 ENTRYPOINT ["/opt/filechecker/dockerinit.sh"]
-CMD ["0"]
 
