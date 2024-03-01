@@ -94,6 +94,8 @@ class FileInfo {
                 $fi->mime = 'application/xml';
             } elseif ($fi->mime === 'application/octet-stream' && $fi->extension === 'docx') {
                 self::recognizeDocx($fi);
+            } elseif ($fi->mime === 'application/x-sylk' && $fi->extension === 'csv') {
+                $fi->mime = 'text/csv';
             }
         } elseif ($fi->type === 'dir') {
             $fi->filesCount = 0;
