@@ -39,7 +39,7 @@
 
 * Install [docker](https://www.docker.com/).
 
-### On repo-ingestion@hephaistos
+### On ACDH Cluster
 
 Nothing to be done. It is installed there already.
 
