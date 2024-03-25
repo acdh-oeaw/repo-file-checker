@@ -6,10 +6,11 @@ RUN curl -sSLf -o /usr/local/bin/install-php-extensions https://github.com/mloca
     apt update &&\
     apt install -y clamav clamdscan clamav-daemon gdal-bin &&\
     sed -i -e 's/^User .*/User root/g' /etc/clamav/clamd.conf &&\
-    install-php-extensions @composer fileinfo iconv intl mbstring simplexml zip zlib bz2 phar yaml
+    install-php-extensions @composer ctype dom fileinfo gd iconv intl libxml mbstring simplexml xml xmlwriter zip zlib bz2 phar yaml
 RUN freshclam --foreground
 COPY . /opt/filechecker
-RUN cd /opt/filechecker &&\
-    composer update -o --no-dev
+RUN cd /opt &&\
+    composer require -o --update-no-dev acdh-oeaw/repo-file-checker &&\
+    composer require -o --update-no-dev acdh-oeaw/arche-metadata-crawler
 ENTRYPOINT ["/opt/filechecker/dockerinit.sh"]
 

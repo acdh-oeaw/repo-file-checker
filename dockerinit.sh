@@ -3,7 +3,7 @@ if [ -z "$DAEMONIZE" ] ; then
     echo "### Performing virus scan" &&\
     clamscan --recursive --infected /data &&\
     echo "### Running the filechecker" &&\
-    php -f /opt/filechecker/index.php -- /data /reports "$@" &&\
+    /opt/vendor/bin/arche-filechecker -- /data /reports "$@" &&\
     echo "### Ended successfully"
 else
     echo "### Running antivirus in a daemon mode"
@@ -12,7 +12,9 @@ else
     echo "###"
     echo "### Perform virus checks with 'docker exec {containerName} clamdscan --infected /data'"
     echo "###"
-    echo "### Run the filechecker with 'docker exec {containerName} /opt/filechecker/bin/arche-filechecker --tmpDir /tmp --reportDir /reports /data {mode}'"
+    echo "### Run the filechecker with 'docker exec {containerName} /opt/vendor/bin/arche-filechecker /data /reports'"
+    echo "###"
+    echo "### Run the metadata crawler with 'docker exec {containerName} /opt/vendor/bin/arche-filechecker /metadataPath /outputTtlPath /dataPath IdIriPrefix'"
     echo "###"
     clamd --foreground
 fi
