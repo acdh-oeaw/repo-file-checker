@@ -4,7 +4,7 @@ RUN curl -sSLf -o /usr/local/bin/install-php-extensions https://github.com/mloca
     mv "$PHP_INI_DIR/php.ini-production" "$PHP_INI_DIR/php.ini" &&\
     sed -i -e 's/^memory_limit.*/memory_limit = -1/g' $PHP_INI_DIR/php.ini &&\
     apt update &&\
-    apt install -y clamav clamdscan clamav-daemon gdal-bin &&\
+    apt install -y clamav clamdscan clamav-daemon clamav-cvdupdate gdal-bin &&\
     sed -i -e 's/^User .*/User root/g' /etc/clamav/clamd.conf &&\
     install-php-extensions @composer ctype dom fileinfo gd iconv intl libxml mbstring simplexml xml xmlwriter zip zlib bz2 phar yaml
 RUN freshclam --foreground
