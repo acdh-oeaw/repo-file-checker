@@ -20,7 +20,7 @@ jobs:
       run: docker push acdhch/arche-filechecker:latest
     - name: build ACDH
       run: |
-        echo "RUN apt install -y vim" >> Dockerfile
+        echo "RUN apt update && apt install -y vim && apt clean" >> Dockerfile
         docker build -t acdhch/arche-filechecker:acdh --label "buildUrl=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" .
     - uses: docker/login-action@v2
       with:
