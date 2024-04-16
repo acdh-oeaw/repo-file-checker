@@ -304,9 +304,8 @@ class CheckFunctions {
         if (!in_array($fi->mime, ['text/xml', 'application/xml']) && !($fi->mime === 'text/plain' && $fi->extension === 'xml')) {
             return;
         }
-        $prev                 = libxml_use_internal_errors(true);
-        $xml                  = new DOMDocument();
-        $xml->validateOnParse = true;
+        $prev = libxml_use_internal_errors(true);
+        $xml  = new DOMDocument();
 
         // parse with DTD validation turned on
         $res = $xml->load($fi->path, LIBXML_DTDLOAD | LIBXML_DTDVALID | LIBXML_BIGLINES | LIBXML_COMPACT);
@@ -322,35 +321,53 @@ class CheckFunctions {
             $fi->warning("XML validation", "Encoding not defined");
         }
 
-        // find schemas defined in the root element
-        $schemas = [];
-        foreach ($xml->documentElement->attributes as $attr) {
-            if ($attr->namespaceURI === 'http://www.w3.org/2001/XMLSchema-instance') {
-                if ($attr->localName === 'noNamespaceSchemaLocation') {
-                    $schemas[''] = trim($attr->nodeValue);
-                } elseif ($attr->localName === 'schemaLocation') {
-                    $tmp              = explode(' ', preg_replace('/\\s+/', ' ', trim($attr->nodeValue)));
-                    $schemas[$tmp[0]] = $tmp[1] ?? '';
+        $valid = [];
+        if ($xml->doctype !== null) {
+            $valid[] = $xml->validate();
+        }
+        foreach ($xml->childNodes as $child) {
+            if ($child instanceof \DOMProcessingInstruction && $child->nodeName === 'xml-model') {
+                preg_match('`href="([^"]+)"`', $child->nodeValue, $href);
+                $href = $href[1] ?? '';
+                preg_match('`type="([^"]+)"`', $child->nodeValue, $type);
+                $type = $type[1] ?? '';
+                preg_match('`schematypens="([^"]+)"`', $child->nodeValue, $ns);
+                $ns   = $ns[1] ?? '';
+                if (!empty($href)) {
+                    $fn = false;
+                    if (str_ends_with(strtolower($href), '.rng') || $type === 'application/relax-ng-compact-syntax' || $ns === 'http://relaxng.org/ns/structure/1.0') {
+                        $fn = 'relaxNGValidateSource';
+                    }
+                    if (str_ends_with(strtolower($href), '.xsd') || $ns === 'http://www.w3.org/2001/XMLSchema') {
+                        $fn = 'schemaValidateSource';
+                    }
+                    if ($fn) {
+                        if (!str_starts_with(strtolower($href), 'http')) {
+                            $href = $fi->directory . '/' . $href;
+                            if (!file_exists($href)) {
+                                $fi->error('XML validation', "Failed to read schema from $href", true);
+                                continue;
+                                ;
+                            }
+                        }
+                        $schema = @file_get_contents($href);
+                        if ($schema === false) {
+                            $fi->error('XML validation', "Failed to read schema from $href", true);
+                            continue;
+                        }
+                        $res = $xml->$fn($schema);
+                        if ($res) {
+                            $fi->info('XML validation', "Schema successfully validated against $href");
+                        } else {
+                            $fi->error('XML validation', "Schema validation against $href failed with: " . print_r(libxml_get_last_error(), true));
+                        }
+                        $valid[] = $res;
+                    }
                 }
             }
         }
-        // validate the root element against its schema
-        $rootNmsp = (string) $xml->documentElement->namespaceURI;
-        if (!isset($schemas[$rootNmsp]) && !($rootNmsp === 'http://www.w3.org/2001/XMLSchema' && $xml->documentElement->localName === 'schema')) {
-            $fi->warning('XML validation', "Missing schema location for the root element");
-        }
-        if (isset($schemas[$rootNmsp])) {
-            $schemaLocation = $this->resolveUrl($schemas[$rootNmsp], $fi->directory, $xml->documentURI);
-            if (empty($schemaLocation)) {
-                $fi->error('XML validation', "Can't resolve schema location $schemas[$rootNmsp]");
-            } else {
-                $res = $xml->schemaValidate($schemaLocation);
-                if ($res) {
-                    $fi->info('XML validation', "Schema successfully validated against $schemaLocation");
-                } else {
-                    $fi->error('XML validation', "Schema validation against $schemaLocation failed with: " . print_r(libxml_get_last_error(), true));
-                }
-            }
+        if (count($valid) === 0) {
+            $fi->warning('XML validation', "Schema not defined");
         }
 
         libxml_use_internal_errors($prev);
@@ -448,38 +465,5 @@ class CheckFunctions {
         if (in_array($content, $this->bom[4]) || in_array(substr($content, 0, 3), $this->bom[3]) || in_array(substr($content, 0, 2), $this->bom[2])) {
             $fi->error('File contains Byte Order Mark');
         }
-    }
-
-    /**
-     * Tries to resolve the URL to something which can be read with fopen()
-     * or file_get_contents.
-     * 
-     * In case of a failure and empty string is returned.
-     */
-    private function resolveUrl(string $url, ?string $curDir = null,
-                                ?string $baseUrl = null): string {
-        $curDir ??= getcwd();
-
-        $ret = "$curDir/$url";
-        if (file_exists($ret)) {
-            return $ret;
-        }
-
-        if (file_exists($url)) {
-            return $url;
-        }
-
-        $backup = error_reporting(E_ERROR);
-        $ret    = ((string) $baseUrl) . $url;
-        $fh     = fopen($ret, 'r');
-        if ($fh === false) {
-            $ret = $url;
-            $fh  = fopen($ret, 'r');
-            if ($fh === false) {
-                $ret = '';
-            }
-        }
-        error_reporting($backup);
-        return $ret;
     }
 }
