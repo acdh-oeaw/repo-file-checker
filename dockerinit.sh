@@ -11,7 +11,7 @@ if [ -z "$DAEMONIZE" ] ; then
         echo "### Performing virus scan" &&\
         clamscan --recursive --infected /data &&\
         echo "### Running the filechecker" &&\
-        /opt/vendor/bin/arche-filechecker -- /data /reports "$@" &&\
+        /opt/vendor/bin/arche-filechecker /data /reports "$@" &&\
         echo "### Ended successfully"
     fi
 else
