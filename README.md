@@ -29,11 +29,16 @@
 
 ### Locally
 
-* Install PHP 8 and [composer](https://getcomposer.org/)
+The filechecker depends on presence of some external tools in your system (e.g. gdal)
+so trying to run it locally can be a painful experience.
+If you want to try, just:
+
+* Install PHP and [composer](https://getcomposer.org/)
 * Run:
   ```bash
   composer require acdh-oeaw/repo-file-checker
   ```
+* Install any other missing software based on errors you get while running the filechecker.
 
 ### As a docker image
 
@@ -45,23 +50,29 @@ Nothing to be done. It is installed there already.
 
 ## Usage
 
+### General remarks
+
+* You can test if the check was successful by reading the exit code of the `arche-filechecker` command.
+  `0` indicates a successful check and non-zero value that at least one error was found.
+* To get a list of all available parameters run:
+  ```bash
+  vendor/bin/arche-filechecker --help
+  ```
+* If you have [bagit](https://en.wikipedia.org/wiki/BagIt) files, place them into a folder called `bagit` and also compress them into a tgz file.
+
 ### On ACDH cluster
 
-First, get the arche-ingestion workload console by:
-
-* Opening [this link](https://rancher.acdh-dev.oeaw.ac.at/dashboard/c/c-m-6hwgqq2g/explorer/apps.deployment/arche-ingestion/arche-ingestion)
-  (if you are redirected to the login page, open the link once again after you log in)
-* Clicking on the bluish button with three vertical dots in the top-right corner of the screen and and choosing `> Execute Shell`
+First, get the arche-ingestion workload console as described [here](https://github.com/acdh-oeaw/arche-ingest/blob/master/docs/acdh-cluster.md)
 
 Then:
 
 * filechecker
   ```bash
-  /ARCHE/vendor/bin/arche-filechecker --csv --html directoryToBeProcessed directoryToWriteReportsInto
+  arche-filechecker --csv --html directoryToBeProcessed directoryToWriteReportsInto
   ```
 * virus scan
   ```bash
-  clamscan --infected directoryToScan
+  clamscan --infected --recursive directoryToScan
   ```
 
 ### Locally
@@ -70,58 +81,71 @@ Then:
 vendor/bin/arche-filechecker --csv --html directoryToBeProcessed directoryToWriteReportsInto
 ```
 
-Remarks:
-
-* You can test if the check was successful by reading the exit code of the `vendor/bin/arche-filechecker` command.
-  `0` indicates a successful check and non-zero value that at least one error was found.
-* To get a list of all available parameters run:
-  ```bash
-  vendor/bin/arche-filechecker --help
-  ```
-* If you have [bagit](https://en.wikipedia.org/wiki/BagIt) files, place them into a folder called `bagit` and also compress them into a tgz file.
-
 ### As a docker container
 
 * Consider downloading fresh signatures for the antivirus software
-  ```bash
-  python3 -m pip install --user cvdupdate
-  cvd update
-  ```
-  * If you're running it inside a CI/CD workflow and don't want to be a bad guy causing unnecessary load on the server storing the signature, store the downloaded database in a cache,
+  * If you're running inside a CI/CD workflow and don't want to be a bad guy causing unnecessary load on the server storing the signature, store the downloaded database in a cache,
     e.g. on Github Actions you may perform the db update using following build steps:
     ```yaml
     - name: cache AV database
       id: avdb
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
-        path: ~/.cvdupdate
+        path: ~/avdb
         key: constant
     - name: refresh AV database
-      run: python3 -m pip install --user cvdupdate && cvd update
+      run: |
+        chmod 777 ~/avdb
+        docker run --rm -v ~/avdb:/var/lib/clamav --entrypoint freshclam acdhch/arche-ingest --foreground
     ```
-* Run a container with the filechecker mounting input and output directories from host:
+  * On localhost (just adjust the path to the directory with the virus signatures)
+    ```bash
+    mkdir -p -m 777 ~/avdb
+    docker run --rm -v ~/avdb:/var/lib/clamav --entrypoint freshclam acdhch/arche-ingest --foreground
+    ```
+* To run a virus check
   ```bash
   docker run \
     --rm \
-    -v <pathToReportsDir>:/reports \
-    -v <pathToDirectoryToBeProcessed>:/data \
-    -v ~/.cvdupdate/database/:/var/lib/clamav \
-    acdhch/arche-filechecker
+    -v pathToVirusSignaturesDirectory:/var/lib/clamav \
+    -v pathToDirectoryToBeProcessed:/data \
+    --entrypoint clamscan \
+    acdhch/arche-ingest
+    --recursive --infected /data
+  ```
+  e.g.
+  ```bash
+  docker run \
+    --rm \
+    -v ~/avdb:/var/lib/clamav \
+    -v `pwd`:/data \
+    --entrypoint clamscan \
+    acdhch/arche-ingest
+    --recursive --infected /data
+  ```
+* To run the filechecker
+  ```bash
+  docker run \
+    --rm -u $UID \
+    -v pathToDirectoryToBeProcessed:/data \
+    -v pathToReportsDir:/reports \
+    --entrypoint arche-filechecker
+    acdhch/arche-ingest
+    --csv --html /data /reports
   ```
   e.g.
   ```bash
   docker run \
     --rm --user $UID \
-    -v MY_REPORTS_DIR:/reports \
-    -v MY_DATA_DIR:/data \
-    -v ~/.cvdupdate/database/:/var/lib/clamav \
-    acdhch/arche-filechecker --csv --html
+    -v /ARCHE/staging/testWollmilchsau/checkReports:/reports \
+    -v /ARCHE/staging/testWollmilchsau/data:/data \
+    -v ~/avdb:/var/lib/clamav \
+    acdhch/arche-ingest \
+    --csv --html /data /reports
   ```
 
 Remarks:
 
-* You can test if the check was successful by reading the exit code of the `docker run` command.
-  `0` indicates a successful check and non-zero that at least one error was found.
 * If you're processing data in parts you can save some time by running the container in the daemonized mode.
   That way you can avoid loading the virus signatures database every time you run the check. The database load takes 2-5 seconds.
   In the daemonized setup:
@@ -140,7 +164,7 @@ Remarks:
     * Perform the checks with
       ```bash
       # virus check
-      docker exec filechecker clamdscan --infected /data
+      docker exec filechecker clamdscan --infected --recursive /data
       # filechecker check
       docker exec --user $UID filechecker /opt/filechecker/bin/arche-filechecker --csv --html /data /reports
       ```
