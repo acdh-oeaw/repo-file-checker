@@ -129,7 +129,7 @@ vendor/bin/arche-filechecker --csv --html directoryToBeProcessed directoryToWrit
     --rm -u $UID \
     -v pathToDirectoryToBeProcessed:/data \
     -v pathToReportsDir:/reports \
-    --entrypoint arche-filechecker
+    --entrypoint arche-filechecker \
     acdhch/arche-ingest
     --csv --html /data /reports
   ```
@@ -139,7 +139,7 @@ vendor/bin/arche-filechecker --csv --html directoryToBeProcessed directoryToWrit
     --rm --user $UID \
     -v /ARCHE/staging/testWollmilchsau/checkReports:/reports \
     -v /ARCHE/staging/testWollmilchsau/data:/data \
-    -v ~/avdb:/var/lib/clamav \
+    --entrypoint arche-filechecker \
     acdhch/arche-ingest \
     --csv --html /data /reports
   ```
