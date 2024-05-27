@@ -105,16 +105,19 @@ class FileInfo {
 
     static private function recognizeDocx(self $fileInfo): void {
         $archive = new ZipArchive();
-        $archive->open($fileInfo->path);
-        if ($archive->locateName('[Content_Types].xml') !== false) {
+        $ret     = $archive->open($fileInfo->path);
+        if ($ret !== true) {
+            $fileInfo->errors[] = new Error(Error::SEVERITY_ERROR, 'Docx', "File is not a valid zip archive (ZipArchive::open() return code $ret)");
+            $fileInfo->valid    = false;
+        } elseif ($archive->locateName('[Content_Types].xml') !== false) {
             for ($i = 0; $i < $archive->count(); $i++) {
                 if (str_starts_with($archive->statIndex($i)['name'], 'word/')) {
                     $fileInfo->mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
                     break;
                 }
             }
+            $archive->close();
         }
-        $archive->close();
     }
 
     static public function getCsvHeader(string $format): string {
