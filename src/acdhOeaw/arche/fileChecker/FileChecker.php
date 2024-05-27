@@ -136,8 +136,12 @@ class FileChecker {
         $this->startDepth  = $maxDepth;
         $this->noErrors    = true;
         $this->checkOutput = new OutputFormatter("$this->reportDir/fileInfo.jsonl", OutputFormatter::FORMAT_JSONLINES);
-
-        echo "\nComputing the number of files and directories to analyze\n";
+        
+        echo "\n### Computing the number of files and directories to analyze\n";
+        if ($this->checkDir === '') {
+            echo "\nERROR: Directory '$dir' does not exist\n";
+            return false;
+        }
         $iter = new RecursiveDirectoryIterator($this->checkDir, RecursiveDirectoryIterator::SKIP_DOTS);
         $iter = new RecursiveIteratorIterator($iter, RecursiveIteratorIterator::SELF_FIRST);
         if (empty($this->matchRegex)) {

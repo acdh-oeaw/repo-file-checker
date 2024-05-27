@@ -94,6 +94,7 @@ class CheckFunctions {
     private array $bom          = [];
     private string $tmpDir;
     private string $gdalCalcPath = '/usr/bin/gdal_calc.py';
+    private string $veraPdfPath  = '/usr/bin/verapdf';
 
     /**
      * 
@@ -107,6 +108,10 @@ class CheckFunctions {
         if (!file_exists($this->gdalCalcPath)) {
             $this->gdalCalcPath = '';
             echo "WARNING: gdal_calc.py not found, images won't be checked for corruption\n";
+        }
+        if (!file_exists($this->veraPdfPath)) {
+            $this->veraPdfPath = '';
+            echo "WARNING: verapdf not found, PDF validation won't be performed\n";
         }
 
         // read PRONOM
@@ -191,8 +196,8 @@ class CheckFunctions {
         $cmd     = sprintf(
             "%s --overwrite --quiet -A %s --calc A --outfile %s --co COMPRESS=LZW 2>&1",
             escapeshellcmd($this->gdalCalcPath),
-                           escapeshellarg($fi->path),
-                                          $tmpfile
+            escapeshellarg($fi->path),
+            $tmpfile
         );
         $output  = [];
         $retCode = null;
@@ -406,14 +411,33 @@ class CheckFunctions {
      */
     #[CheckFile]
     public function checkPdfFile(FileInfo $fi): void {
+        if (!empty($this->veraPdfPath)) {
+            return;
+        }
         if ($fi->extension !== 'pdf' && $fi->mime !== 'application/pdf') {
             return;
         }
-        try {
-            $parser = new \Smalot\PdfParser\Parser();
-            $parser->parseFile($fi->path);
-        } catch (\Exception $ex) {
-            $fi->error("PDF", $ex->getMessage());
+        $cmd     = sprintf(
+            "%s --format json %s 2>/dev/null",
+            escapeshellcmd($this->veraPdfPath),
+            escapeshellarg($fi->path)
+        );
+        $output  = [];
+        $retCode = null;
+        exec($cmd, $output, $retCode);
+        $result  = json_decode(implode("\n", $output)) ?: null;
+        $result  = $result?->report?->jobs;
+        if (isset($result[0]->validationResult)) {
+            $result = $result[0]->validationResult;
+            if ($result->compliant ?? false) {
+                $fi->info("PDF", "Compliant with the " . $result->profileName);
+            } else {
+                foreach ($result->details?->ruleSummaries ?? [] as $i) {
+                    $fi->error("PDF", "PDF/A rule $i->clause violated: $i->description");
+                }
+            }
+        } elseif (isset($result[0]->taskException)) {
+            $fi->error("PDF", $result[0]->taskException->exception);
         }
     }
 
