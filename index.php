@@ -37,7 +37,6 @@ require_once "$composerDir/vendor/autoload.php";
 
 $parser = new ArgumentParser();
 $parser->addArgument('--tmpDir', default: sys_get_temp_dir(), help: "Temporary directory. If not specified, the system-wide temp dir is used.");
-$parser->addArgument('--signatureDir', default: __DIR__ . '/aux', help: "Directory containing the DROID_SignatureFile XML file (default: %(default)s)");
 $parser->addArgument('--csv', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, CSV reports are generated on top of the standard JSON linse output.");
 $parser->addArgument('--html', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, HTML reports are generated on top of the standard JSON lines output.");
 $parser->addArgument('--overwrite', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, the report is generated directly in the reportDir without creation of a timestamp-based directory.");

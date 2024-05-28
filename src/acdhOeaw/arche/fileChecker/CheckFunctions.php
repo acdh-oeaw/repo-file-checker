@@ -37,7 +37,10 @@ use acdhOeaw\arche\fileChecker\attributes\CheckDir;
 
 class CheckFunctions {
 
-    const BAGIT_REGEX = '/^BagIt-Version: [0-9]+[.][0-9]+/';
+    const VERAPDF_PATH   = __DIR__ . '/../../../../aux/verapdf/bin/verapdf';
+    const DROID_PATH     = __DIR__ . '/../../../../aux/droid/droid.sh';
+    const SIGNATURES_DIR = __DIR__ . '/../../../../aux/droid/user/signature_files/';
+    const BAGIT_REGEX    = '/^BagIt-Version: [0-9]+[.][0-9]+/';
 
     /**
      * Process the pronom xml for the MIMEtypes
@@ -51,9 +54,6 @@ class CheckFunctions {
             FileChecker::die("Failed to read signatures file $file");
         }
         $extArray = [];
-
-        // - jeden format może mieć wiele Extension
-        // - różne formaty mogą zgłaszać takie samo Extension
 
         foreach ($xml->FileFormatCollection->FileFormat as $i) {
             $mime = mb_strtolower($i->attributes()->MIMEType[0] ?? '');
@@ -94,7 +94,6 @@ class CheckFunctions {
     private array $bom          = [];
     private string $tmpDir;
     private string $gdalCalcPath = '/usr/bin/gdal_calc.py';
-    private string $veraPdfPath  = '/usr/bin/verapdf';
 
     /**
      * 
@@ -109,19 +108,21 @@ class CheckFunctions {
             $this->gdalCalcPath = '';
             echo "WARNING: gdal_calc.py not found, images won't be checked for corruption\n";
         }
-        if (!file_exists($this->veraPdfPath)) {
-            $this->veraPdfPath = '';
-            echo "WARNING: verapdf not found, PDF validation won't be performed\n";
+        if (!file_exists(self::DROID_PATH) || !file_exists(self::VERAPDF_PATH) || count(scandir(self::SIGNATURES_DIR)) < 3) {
+            exec(__DIR__ . '/../../../../aux/install_deps.sh 2>&1', $output, $ret);
+            if ($ret !== 0) {
+                FileChecker::die("External tools installation failed with:\n" . implode("\n", $output) . "\n");
+            }
         }
 
         // read PRONOM
-        $files = scandir($cfg['signatureDir']);
+        $files = scandir(self::SIGNATURES_DIR);
         $files = array_filter($files, fn($x) => str_ends_with(mb_strtolower($x), '.xml'));
         if (count($files) === 0) {
             FileChecker::die("Can't read signatures file - the signature directory is empty\n");
         }
         sort($files);
-        $this->extToMime = self::getMimeFromPronom($cfg['signatureDir'] . '/' . end($files));
+        $this->extToMime = self::getMimeFromPronom(self::SIGNATURES_DIR . '/' . end($files));
         if (count($this->extToMime) === 0) {
             FileChecker::die("Reading signatures file failed");
         }
@@ -419,7 +420,7 @@ class CheckFunctions {
         }
         $cmd     = sprintf(
             "%s --format json %s 2>/dev/null",
-            escapeshellcmd($this->veraPdfPath),
+            escapeshellcmd(self::VERAPDF_PATH),
             escapeshellarg($fi->path)
         );
         $output  = [];

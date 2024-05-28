@@ -3,3 +3,6 @@
 /tests/reports
 /tests/tmp
 /nbproject
+/aux/verapdf
+/aux/droid
+/.phpunit.cache

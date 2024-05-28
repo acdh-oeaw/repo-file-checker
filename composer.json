@@ -36,6 +36,12 @@
         "bin/arche-filechecker"
     ],
     "require-dev": {
-        "phpstan/phpstan": "^1.9"
+        "phpstan/phpstan": "^1.9",
+        "phpunit/phpunit": "^11.1"
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "acdhOeaw\\arche\\fileChecker\\tests\\": "tests"
+        }
     }
 }

@@ -48,7 +48,6 @@ class FileChecker {
 
     private string $tmpDir;
     private string $reportDir;
-    private string $signatureDir;
     private string $tmplDir;
     private string $checkDir;
     private string $matchRegex;
@@ -97,10 +96,8 @@ class FileChecker {
 
         $this->tmpDir       = $config['tmpDir'];
         $this->reportDir    = realpath($config['reportDir']);
-        $this->signatureDir = $config['signatureDir'];
         $this->checkDirExistsWritable($this->tmpDir, 'tmpDir');
         $this->checkDirExistsWritable($this->reportDir, 'reportDir');
-        $this->checkDirExistsWritable($this->signatureDir, 'signatureDir');
 
         if (!$config['overwrite']) {
             $this->reportDir = $this->reportDir . '/' . date('Y_m_d_H_i_s');
