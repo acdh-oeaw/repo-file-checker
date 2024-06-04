@@ -34,6 +34,7 @@ notAcceptedFormat;not_PDF_A.pdf;File;14162;pdf;application/pdf;;no
 notAcceptedFormat;swf_standard_testfile.swf;File;31662;swf;application/x-shockwave-flash;;no
 notPreferredFormat;image.gif;File;632;gif;image/gif;;no
 notPreferredFormat;image.png;File;1320;png;image/png;;no
+notPreferredFormat;issue22.json;File;488364;json;application/json;;no
 notPreferredFormat;shiporder.xml;File;558;xml;application/xml;;no
 notPreferredFormat;text.rtf;File;2431;rtf;application/rtf;;no
 passwordProtected;pswd_docx.docx;File;17920;docx;;;no

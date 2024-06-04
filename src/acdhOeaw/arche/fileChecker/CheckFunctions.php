@@ -400,7 +400,8 @@ class CheckFunctions {
      */
     #[CheckFile]
     public function check13RasterImage(FileInfo $fi): void {
-        static $imgMime = ['image/tiff', 'image/png', 'image/jpeg', 'image/gif', 'image/webp'];
+        static $imgMime = ['image/tiff', 'image/png', 'image/jpeg', 'image/gif',
+            'image/webp'];
         if (empty($this->gdalCalcPath) || !in_array($fi->mime, $imgMime)) {
             return;
         }
@@ -422,11 +423,10 @@ class CheckFunctions {
             unlink($tmpfile);
         }
 
-            $exif = @exif_read_data($fi->path, 'ifd0');
-            echo $fi->path . ' ' . (is_array($exif) ? $exif['Orientation'] ?? 'no orientation' : 'no exif')."\n";
-            if (is_array($exif) && ($exif['Orientation'] ?? 1) !== 1) {
-                $fi->warning('Rotated image', 'The EXIF metadata indicate the image is rotated');
-            }
+        $exif = @exif_read_data($fi->path, 'ifd0');
+        if (is_array($exif) && ($exif['Orientation'] ?? 1) !== 1) {
+            $fi->warning('Rotated image', 'The EXIF metadata indicate the image is rotated');
+        }
     }
 
     /**
