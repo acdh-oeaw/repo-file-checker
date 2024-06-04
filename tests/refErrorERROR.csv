@@ -1,0 +1,39 @@
+directory;filename;severity;errorType;errorMessage
+bagit;anotherBag;ERROR;BagIt;tagmanifest-sha1.txt: bag-info.txt does not exist.
+bagit;BadBag.tgz;ERROR;BagIt;manifest-sha1.txt: data/imgs/109x109xcoins1-150x150.jpg calculated hash (547b21e9c710f562d448a6cd7d32f8257b04e561) does not match manifest (11547b21e9c710f562d448a6cd7d32f8257b04e561)
+bagit;BadBag.tgz;ERROR;BagIt;manifest-sha1.txt: data/imgs/110x108xmetaphor1.png calculated hash (4beed314513ad81e1f5fad42672a3b1bd3a018ea) does not match manifest (114beed314513ad81e1f5fad42672a3b1bd3a018ea)
+bagit;BadBag.tgz;ERROR;BagIt;manifest-sha1.txt: data/imgs/fibtriangle-110x110.jpg calculated hash (b8593e2b3c2fa3756d2b206a90c7259967ff6650) does not match manifest (11b8593e2b3c2fa3756d2b206a90c7259967ff6650)
+bagit;BadBag.tgz;ERROR;BagIt;manifest-sha1.txt: data/README.txt calculated hash (0de174b95ebacc2d91b0839cb2874b2e8f604b98) does not match manifest (110de174b95ebacc2d91b0839cb2874b2e8f604b98)
+bagit;BadBag.tgz;ERROR;BagIt;manifest-sha1.txt: There are files on disk not listed in this manifest file.
+duplicates;content_duplicate2.txt;ERROR;Duplicated file;Same hash as duplicates/child/content_duplicate1.txt
+duplicates;content_duplicate1.txt;ERROR;Duplicated file;Same hash as duplicates/child/content_duplicate1.txt
+duplicates;name_duplicate.txt;ERROR;Duplicated file;File names duplication with name_Duplicate.txt on a case-insensititve filesystems
+notAcceptedFormat;airboat.obj;ERROR;Unknown MIME;Content type not recognized by the DROID
+notAcceptedFormat;image.avif;ERROR;Unknown MIME;Content type not recognized by the DROID
+notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;PDF/A rule 6.7.2 violated: The document catalog dictionary of a conforming file shall contain the Metadata key
+notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;"PDF/A rule 6.7.3 violated: The value of Author entry from the document information dictionary, if present, and its analogous XMP property ""dc:creator"" shall be equivalent. dc:creator shall contain exactly one entry"
+notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;PDF/A rule 6.2.3.3 violated: DeviceRGB may be used only if the file has a PDF/A-1 OutputIntent that uses an RGB colour space
+notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;"PDF/A rule 6.7.3 violated: The value of Creator entry from the document information dictionary, if present, and its analogous XMP property ""xmp:CreatorTool"" shall be equivalent"
+notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;"PDF/A rule 6.7.3 violated: The value of Producer entry from the document information dictionary, if present, and its analogous XMP property ""pdf:Producer"" shall be equivalent"
+notAcceptedFormat;geojson.geojson;ERROR;Format not accepted;MIME application/geo+json: not accepted, extension geojson: not accepted
+notAcceptedFormat;image.webp;ERROR;Format not accepted;MIME image/webp: not accepted, extension webp: not accepted
+notAcceptedFormat;swf_standard_testfile.swf;ERROR;Format not accepted;MIME application/x-shockwave-flash: not accepted, extension swf: not accepted
+passwordProtected;pswd_docx.docx;ERROR;Password protected file;Or not a docx file at all
+passwordProtected;pswd_ods.ods;ERROR;Password protected file;
+passwordProtected;pswd_odt.odt;ERROR;Password protected file;
+passwordProtected;pswd_pdf.pdf;ERROR;Password protected file;
+passwordProtected;pswd_xlsx.xlsx;ERROR;Password protected file;Or not a xlsx file at all
+passwordProtected;pswd_zip.zip;ERROR;Password protected file;
+wrongContent;bad_extension.xml;ERROR;Unknown MIME;Failed to parse the XML file with: LibXMLError Object
+wrongContent;broken_docx.docx;ERROR;Format not accepted;MIME multipart/appledouble: not accepted, extension docx: preferred
+wrongContent;broken_pdf.pdf;ERROR;Unknown MIME;Content type not recognized by the DROID
+wrongContent;broken_tif.tif;ERROR;Corrupted image;
+wrongContent;byte_order_mark.txt;ERROR;File contains Byte Order Mark;
+wrongContent;image.jpg;ERROR;MIME/extension mismatch;Extension: jpg, MIME type: image/tiff
+wrongContent;no_xml_declaration.xml;ERROR;XML;Missing XML declaration
+wrongContent;symlink.jpg;ERROR;Wrong file type;File type: Symlink
+wrongFilename;.hidden.txt;ERROR;Invalid filename;
+wrongFilename;contains space.txt;ERROR;Invalid filename;
+wrongFilename;non_ascii_żü.txt;ERROR;Invalid filename;
+wrongFilename;special:characters.txt;ERROR;Invalid filename;
+;emptyDir;ERROR;Empty directory;

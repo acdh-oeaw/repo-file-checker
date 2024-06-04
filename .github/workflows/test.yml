@@ -10,10 +10,10 @@ jobs:
     - uses: actions/checkout@v4
     #- uses: mxschmitt/action-tmate@v3
     - name: composer
-      run: composer update --no-dev -o 
+      run: composer update
     - name: test
-      # the filechecker should have non-zero error code
       run: |
+        vendor/bin/phpunit
         RET=1
         mkdir -p tests/reports && bin/arche-filechecker --tmpDir /tmp tests/data/ tests/reports/ || RET=0
         exit $RET

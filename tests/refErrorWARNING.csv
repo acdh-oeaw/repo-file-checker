@@ -1,0 +1,11 @@
+directory;filename;severity;errorType;errorMessage
+bagit/anotherBag/data;phpunit.xml;WARNING;XML;Schema not defined
+bagit/anotherBag/data;phpunit.xml;WARNING;Format not preferred;MIME application/xml: accepted, extension xml: preferred
+notPreferredFormat;image.gif;WARNING;Format not preferred;MIME image/gif: accepted, extension gif: accepted
+notPreferredFormat;image.jpg;WARNING;Format not preferred;MIME image/jpeg: accepted, extension jpg: accepted
+notPreferredFormat;image.png;WARNING;Format not preferred;MIME image/png: accepted, extension png: accepted
+notPreferredFormat;text.rtf;WARNING;Format not preferred;MIME application/rtf: accepted, extension rtf: accepted
+notPreferredFormat;shiporder.xml;WARNING;Format not preferred;MIME application/xml: accepted, extension xml: preferred
+wrongContent;no_schema_location.xml;WARNING;XML;Schema not defined
+wrongContent;no_xml_declaration.xml;WARNING;XML;Schema not defined
+wrongContent;no_schema_location.xml;WARNING;Format not preferred;MIME application/xml: accepted, extension xml: preferred

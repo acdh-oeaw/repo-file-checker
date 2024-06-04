@@ -38,19 +38,24 @@ use finfo;
  */
 class FileInfo {
 
+    const DROID_TYPEDIR   = 'Folder';
+    const DROID_TYPEFILE  = 'File';
+    const DROID_TYPELINK  = 'Symlink';
     const UNKNOWN_MIME    = 'unknown';
     const OUTPUT_ERROR    = 'error';
     const OUTPUT_FILELIST = 'fileList';
     const OUTPUT_DIRLIST  = 'dirList';
+    const SPECIAL_BAGIT   = 'bagit';
+    const SPECIAL_XSD     = 'xsd';
 
     static private $outputColumns = [
         self::OUTPUT_FILELIST => ['directory', 'filename', 'type', 'size', 'lastModified',
-            'extension', 'mime', 'valid'],
+            'extension', 'mime', 'specialType', 'valid'],
         self::OUTPUT_DIRLIST  => ['path', 'lastModified', 'valid'],
         self::OUTPUT_ERROR    => ['directory', 'filename', 'severity', 'errorType',
             'errorMessage'],
     ];
-    static private finfo | bool $finfo;
+    static private finfo $fileInfo;
 
     static public function fromJson(string $json): self {
         $fi = new FileInfo();
@@ -60,64 +65,31 @@ class FileInfo {
         return $fi;
     }
 
-    static public function fromPath(string $path): self {
-        if (!isset(self::$finfo)) {
-            try {
-                self::$finfo = new finfo(FILEINFO_MIME_TYPE);
-            } catch (Exception $ex) {
-                echo "Failed to instantiate the finfo object. Falling back to mime_content_type() for getting file's MIME type.\n";
-                self::$finfo = false;
-            }
+    static public function fromDroid(array $data) {
+        $fi                   = new FileInfo();
+        $fi->path             = $data['FILE_PATH'];
+        $fi->directory        = dirname($fi->path);
+        $fi->filename         = basename($fi->path);
+        $fi->type             = is_link($fi->path) ? self::DROID_TYPELINK : $data['TYPE'];
+        $fi->size             = (int) $data['SIZE'];
+        $fi->lastModified     = $data['LAST_MODIFIED'];
+        $fi->extension        = $data['EXT'];
+        $fi->mime             = preg_replace('/,.*/', '', $data['MIME_TYPE']);
+        $fi->filesCount       = 0;
+        $fi->droidId          = (int) $data['ID'];
+        $fi->droidParentId    = (int) $data['PARENT_ID'];
+        $fi->droidExtMismatch = $data['EXTENSION_MISMATCH'] === 'true';
+        $fi->droidFormatCount = (int) $data['FORMAT_COUNT'];
+        $fi->valid            = true;
+
+        switch ($data['PUID']) {
+            case 'x-fmt/280':
+                $fi->specialType = self::SPECIAL_XSD;
+                break;
         }
 
-        $fi               = new FileInfo();
-        $fi->path         = $path;
-        $fi->directory    = dirname($path);
-        $fi->filename     = basename($path);
-        $fi->type         = filetype($path);
-        $fi->size         = 0;
-        $fi->lastModified = date("Y-m-d H:i:s", filemtime($path));
-        $fi->valid        = true;
-        if ($fi->type === 'file') {
-            $fi->size      = filesize($path);
-            $fi->extension = strtolower(substr($path, strrpos($path, '.') + 1));
-            $fi->mime      = (self::$finfo ? self::$finfo->file($path) : mime_content_type($path)) ?: self::UNKNOWN_MIME;
 
-            // hacks for formats which can't be reliably recognized
-            if ($fi->mime === 'text/plain') {
-                $fi->mime = match ($fi->extension) {
-                    'csv' => 'text/csv',
-                    'tsv' => 'text/tsv',
-                    default => 'text/plain'
-                };
-            } elseif ($fi->mime === 'text/xml' && $fi->extension !== 'xml') {
-                $fi->mime = 'application/xml';
-            } elseif ($fi->mime === 'application/octet-stream' && $fi->extension === 'docx') {
-                self::recognizeDocx($fi);
-            } elseif ($fi->mime === 'application/x-sylk' && $fi->extension === 'csv') {
-                $fi->mime = 'text/csv';
-            }
-        } elseif ($fi->type === 'dir') {
-            $fi->filesCount = 0;
-        }
         return $fi;
-    }
-
-    static private function recognizeDocx(self $fileInfo): void {
-        $archive = new ZipArchive();
-        $ret     = $archive->open($fileInfo->path);
-        if ($ret !== true) {
-            $fileInfo->errors[] = new Error(Error::SEVERITY_ERROR, 'Docx', "File is not a valid zip archive (ZipArchive::open() return code $ret)");
-            $fileInfo->valid    = false;
-        } elseif ($archive->locateName('[Content_Types].xml') !== false) {
-            for ($i = 0; $i < $archive->count(); $i++) {
-                if (str_starts_with($archive->statIndex($i)['name'], 'word/')) {
-                    $fileInfo->mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-                    break;
-                }
-            }
-            $archive->close();
-        }
     }
 
     static public function getCsvHeader(string $format): string {
@@ -137,6 +109,11 @@ class FileInfo {
     public int $size;
     public int $filesCount;
     public bool $valid;
+    public int $droidId;
+    public int $droidParentId;
+    public bool $droidExtMismatch;
+    public int $droidFormatCount;
+    public ?string $specialType = null;
 
     /**
      * 
@@ -167,6 +144,10 @@ class FileInfo {
         return array_sum(array_map($callback, $this->errors)) === 0;
     }
 
+    public function isDir(): bool {
+        return $this->type === self::DROID_TYPEDIR;
+    }
+
     public function save(OutputFormatter $handle, ?string $format = null): void {
         // just dump object as it is
         if ($format === null) {
@@ -176,8 +157,8 @@ class FileInfo {
 
         // filter
         $skip = match ($format) {
-            self::OUTPUT_DIRLIST => $this->type !== 'dir',
-            self::OUTPUT_FILELIST => $this->type !== 'file',
+            self::OUTPUT_DIRLIST => $this->type !== self::DROID_TYPEDIR,
+            self::OUTPUT_FILELIST => $this->type !== self::DROID_TYPEFILE,
             self::OUTPUT_ERROR => count($this->errors) === 0,
             default => false,
         };

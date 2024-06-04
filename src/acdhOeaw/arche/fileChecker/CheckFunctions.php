@@ -37,37 +37,10 @@ use acdhOeaw\arche\fileChecker\attributes\CheckDir;
 
 class CheckFunctions {
 
-    const VERAPDF_PATH   = __DIR__ . '/../../../../aux/verapdf/bin/verapdf';
+    const VERAPDF_PATH   = __DIR__ . '/../../../../aux/verapdf/verapdf';
     const DROID_PATH     = __DIR__ . '/../../../../aux/droid/droid.sh';
     const SIGNATURES_DIR = __DIR__ . '/../../../../aux/droid/user/signature_files/';
     const BAGIT_REGEX    = '/^BagIt-Version: [0-9]+[.][0-9]+/';
-
-    /**
-     * Process the pronom xml for the MIMEtypes
-     * 
-     * @param string $file
-     * @return array<string>
-     */
-    static private function getMimeFromPronom(string $file): array {
-        $xml = simplexml_load_file($file);
-        if ($xml === false) {
-            FileChecker::die("Failed to read signatures file $file");
-        }
-        $extArray = [];
-
-        foreach ($xml->FileFormatCollection->FileFormat as $i) {
-            $mime = mb_strtolower($i->attributes()->MIMEType[0] ?? '');
-            if (!empty($mime)) {
-                $mime = array_map(fn($x) => trim($x), explode(',', $mime));
-                foreach ($i->Extension as $ext) {
-                    $ext            = mb_strtolower((string) $ext);
-                    $extArray[$ext] = array_merge($extArray[$ext] ?? [], $mime);
-                }
-            }
-        }
-        $extArray = array_map(fn($x) => array_unique($x), $extArray);
-        return $extArray;
-    }
 
     /**
      * 
@@ -111,26 +84,9 @@ class CheckFunctions {
         if (!file_exists(self::DROID_PATH) || !file_exists(self::VERAPDF_PATH) || count(scandir(self::SIGNATURES_DIR)) < 3) {
             exec(__DIR__ . '/../../../../aux/install_deps.sh 2>&1', $output, $ret);
             if ($ret !== 0) {
-                FileChecker::die("External tools installation failed with:\n" . implode("\n", $output) . "\n");
+                throw new FileCheckerException("External tools installation failed with:\n" . implode("\n", $output) . "\n");
             }
         }
-
-        // read PRONOM
-        $files = scandir(self::SIGNATURES_DIR);
-        $files = array_filter($files, fn($x) => str_ends_with(mb_strtolower($x), '.xml'));
-        if (count($files) === 0) {
-            FileChecker::die("Can't read signatures file - the signature directory is empty\n");
-        }
-        sort($files);
-        $this->extToMime = self::getMimeFromPronom(self::SIGNATURES_DIR . '/' . end($files));
-        if (count($this->extToMime) === 0) {
-            FileChecker::die("Reading signatures file failed");
-        }
-        // hacks
-        $this->extToMime['tsv'][]     = 'text/tsv';
-        $this->extToMime['geojson'][] = 'application/json';
-        $this->extToMime['avif']      = ['image/avif'];
-        $this->extToMime['webp']      = ['image/webp'];
 
         // read file formats from arche-assets
         // in case of extension/mime conflicts be conservative and assign "accepted" instead of "preferred"
@@ -167,9 +123,264 @@ class CheckFunctions {
     }
 
     #[CheckDir]
-    public function checkEmptyDir(FileInfo $fi): void {
-        if (count(scandir($fi->path)) <= 2) {
+    public function check01ValidDirname(FileInfo $fi): void {
+        if (preg_match('/^[A-Za-z0-9][-_A-Za-z0-9]*[A-Za-z0-9]$/', $fi->filename) !== 1) {
+            $fi->error("Invalid filename");
+        }
+    }
+
+    #[CheckDir]
+    public function check02EmptyDir(FileInfo $fi): void {
+        if ($fi->filesCount === 0) {
             $fi->error("Empty directory");
+        }
+    }
+
+    #[CheckFile]
+    public function check01ValidFilename(FileInfo $fi): void {
+        if (preg_match('/^[A-Za-z0-9][-_A-Za-z0-9]*[A-Za-z0-9][.][A-Za-z0-9]+$/', $fi->filename) !== 1) {
+            $fi->error("Invalid filename");
+        }
+    }
+
+    #[CheckFile]
+    public function check02Type(FileInfo $fi): void {
+        if ($fi->type !== FileInfo::DROID_TYPEDIR && $fi->type !== FileInfo::DROID_TYPEFILE) {
+            $fi->error('Wrong file type', "File type: $fi->type");
+            throw new LastCheckException();
+        }
+    }
+
+    #[CheckFile]
+    public function check02ZipArchive(FileInfo $fi): void {
+        if ($fi->mime !== 'application/zip') {
+            return;
+        }
+        $za  = new ZipArchive();
+        $res = $za->open($fi->path);
+        if ($res !== true) {
+            $error = $this->getZipError($za, $res);
+            $fi->error("Zip", $error);
+            throw new LastCheckException();
+        }
+        $filesCount = $za->count();
+        for ($i = 0;
+            $i < $filesCount;
+            $i++) {
+            $res = $za->getStreamIndex($i);
+            if ($res === false) {
+                $error = $za->getStatusString();
+                if ($error === 'No password provided') {
+                    $fi->error("Password protected file");
+                } else {
+                    $fi->error("Zip", $za->getStatusString());
+                }
+                throw new LastCheckException();
+            }
+        }
+    }
+
+    /**
+     * Checks if odt/ods/docx/xlsx files are password protected
+     */
+    #[CheckFile]
+    public function check03PswdProtected(FileInfo $fi): void {
+        if (in_array($fi->extension, ['odt', 'ods']) && $fi->mime === 'application/zip') {
+            $za  = new ZipArchive();
+            $za->open($fi->path);
+            $res = $za->getStream('META-INF/manifest.xml');
+            if ($res === false) {
+                $fi->error($fi->extension, "Error reading META-INF/manifest.xml: " . $za->getStatusString());
+                $za->close();
+                throw new LastCheckException();
+            }
+            $xml       = new SimpleXMLElement(fread($res, 10485760));
+            $xml->registerXPathNamespace('manifest', 'urn:oasis:names:tc:opendocument:xmlns:manifest:1.0');
+            $encrypted = $xml->xpath('//manifest:encryption-data');
+            if (is_array($encrypted) && count($encrypted) > 0) {
+                $fi->error("Password protected file");
+                $za->close();
+                throw new LastCheckException();
+            }
+            $za->close();
+        }
+        if (in_array($fi->extension, ['docx', 'xlsx']) && empty($fi->mime)) {
+            $za  = new ZipArchive();
+            $res = $za->open($fi->path);
+            if ($res !== true) {
+                $error = $this->getZipError($za, $res);
+                if ($error === 'Not a zip archive') {
+                    $fi->error('Password protected file', "Or not a $fi->extension file at all");
+                } else {
+                    $fi->error($fi->extension, $error);
+                }
+                throw new LastCheckException();
+            }
+            $za->close();
+        }
+    }
+
+    /**
+     * Check the extension is valid for a given MIME type according to the DROID.
+     */
+    #[CheckFile]
+    public function check04MimeMeetsExtension(FileInfo $fi): void {
+        if ($fi->droidFormatCount === 0) {
+            if ($fi->extension === 'xml') {
+                $this->check10Xml($fi, true);
+            } else {
+                $fi->error('Unknown MIME', 'Content type not recognized by the DROID');
+            }
+            throw new LastCheckException();
+        } elseif ($fi->droidFormatCount > 1) {
+            $fi->error('Unknown MIME', 'Multiple content types recognized by the DROID');
+            throw new LastCheckException();
+        }
+
+        static $except = ['tgz|application/gzip'];
+        if ($fi->droidExtMismatch && !in_array($fi->extension . '|' . $fi->mime, $except)) {
+            $fi->error('MIME/extension mismatch', 'Extension: ' . $fi->extension . ', MIME type: ' . $fi->mime);
+            throw new LastCheckException();
+        }
+    }
+
+    /**
+     * Checks XML files:
+     * 
+     * - loads the file with DTD validation turned on
+     * - checks if the file contains XML declaration
+     * - checks if the root element defines a schema location for its own namespace
+     * - if the schema location is provided, validates against the schema
+     */
+    #[CheckFile]
+    public function check10Xml(FileInfo $fi, bool $force = false): void {
+        static $xmlMime = ['text/xml', 'application/xml', 'application/tei+xml'];
+        static $xmlSkip = [FileInfo::SPECIAL_XSD];
+        if (!$force && (!in_array($fi->mime, $xmlMime) || in_array($fi->specialType, $xmlSkip))) {
+            return;
+        }
+        $prev = libxml_use_internal_errors(true);
+        $xml  = new DOMDocument();
+
+        // parse with DTD validation turned on
+        $res = $xml->load($fi->path, LIBXML_DTDLOAD | LIBXML_DTDVALID | LIBXML_BIGLINES | LIBXML_COMPACT);
+        if ($res === false) {
+            $fi->error("Unknown MIME", "Failed to parse the XML file with: " . print_r(libxml_get_last_error(), true));
+            return;
+        }
+
+        // basic checks
+        if (!in_array($fi->mime, $xmlMime)) {
+            $fi->error("XML", "Missing XML declaration");
+        } elseif (empty($xml->encoding)) {
+            $fi->warning("XML", "Encoding not defined");
+        }
+
+        $valid = [];
+        if ($xml->doctype !== null) {
+            $valid[] = $xml->validate();
+        }
+        foreach ($xml->childNodes as $child) {
+            // https://www.w3.org/TR/xml-model/
+            if ($child instanceof \DOMProcessingInstruction && $child->nodeName === 'xml-model') {
+                preg_match('`href="([^"]+)"`', $child->nodeValue, $href);
+                $href = $href[1] ?? '';
+                preg_match('`type="([^"]+)"`', $child->nodeValue, $type);
+                $type = $type[1] ?? '';
+                preg_match('`schematypens="([^"]+)"`', $child->nodeValue, $ns);
+                $ns   = $ns[1] ?? '';
+                if (!empty($href)) {
+                    $fn = false;
+                    if (str_ends_with(strtolower($href), '.rng') || $type === 'application/relax-ng-compact-syntax' || $ns === 'http://relaxng.org/ns/structure/1.0') {
+                        $fn = 'relaxNGValidateSource';
+                    }
+                    if (str_ends_with(strtolower($href), '.xsd') || $ns === 'http://www.w3.org/2001/XMLSchema') {
+                        $fn = 'schemaValidateSource';
+                    }
+                    if ($fn) {
+                        if (!str_starts_with(strtolower($href), 'http')) {
+                            $href = $fi->directory . '/' . $href;
+                            if (!file_exists($href)) {
+                                $fi->error('XML', "Failed to read schema from $href", true);
+                                continue;
+                                ;
+                            }
+                        }
+                        $schema = @file_get_contents($href);
+                        if ($schema === false) {
+                            $fi->error('XML', "Failed to read schema from $href", true);
+                            continue;
+                        }
+                        $res = $xml->$fn($schema);
+                        if ($res) {
+                            $fi->info('XML', "Schema successfully validated against $href");
+                        } else {
+                            $fi->error('XML', "Schema validation against $href failed with: " . print_r(libxml_get_last_error(), true));
+                        }
+                        $valid[] = $res;
+                    }
+                }
+            }
+        }
+        if (count($valid) === 0) {
+            $fi->warning('XML', "Schema not defined");
+        }
+
+        libxml_use_internal_errors($prev);
+    }
+
+    /**
+     * 
+     * Check the PDF version and try to open to be sure that is doesnt have any pwd
+     * 
+     * @param string $file
+     * @return Error|null
+     */
+    #[CheckFile]
+    public function check11PdfFile(FileInfo $fi): void {
+        if ($fi->mime !== 'application/pdf') {
+            return;
+        }
+        $cmd     = sprintf(
+            "%s --format json %s 2>/dev/null",
+            escapeshellcmd(self::VERAPDF_PATH),
+            escapeshellarg($fi->path)
+        );
+        $output  = [];
+        $retCode = null;
+        exec($cmd, $output, $retCode);
+        $result  = json_decode(implode("\n", $output)) ?: null;
+        $result  = $result?->report?->jobs;
+        if (isset($result[0]->validationResult)) {
+            $result = $result[0]->validationResult;
+            if ($result->compliant ?? false) {
+                $fi->info("PDF", "Compliant with the " . $result->profileName);
+            } else {
+                foreach ($result->details?->ruleSummaries ?? [] as $i) {
+                    $fi->error("PDF", "PDF/A rule $i->clause violated: $i->description");
+                }
+            }
+        } elseif (isset($result[0]->taskException)) {
+            $error = $result[0]->taskException->exception;
+            if ($error === 'The PDF stream appears to be encrypted.') {
+                $fi->error('Password protected file');
+                throw new LastCheckException();
+            } else {
+                $fi->error("PDF", $error);
+            }
+        }
+    }
+
+    #[CheckFile]
+    public function check12Bom(FileInfo $fi): void {
+        if (!str_starts_with($fi->mime, 'text/')) {
+            return;
+        }
+        $fh      = fopen($fi->path, 'r');
+        $content = fread($fh, 4);
+        fclose($fh);
+        if (in_array($content, $this->bom[4]) || in_array(substr($content, 0, 3), $this->bom[3]) || in_array(substr($content, 0, 2), $this->bom[2])) {
+            $fi->error('File contains Byte Order Mark');
         }
     }
 
@@ -188,9 +399,9 @@ class CheckFunctions {
      * @return void
      */
     #[CheckFile]
-    public function checkRasterImage(FileInfo $fi): void {
+    public function check13RasterImage(FileInfo $fi): void {
         static $imgMime = ['image/tiff', 'image/png', 'image/jpeg', 'image/gif'];
-        if (!empty($this->gdalCalcPath) && !in_array($fi->mime, $imgMime)) {
+        if (empty($this->gdalCalcPath) || !in_array($fi->mime, $imgMime)) {
             return;
         }
         $tmpfile = escapeshellarg("$this->tmpDir/tmp.tif");
@@ -220,9 +431,9 @@ class CheckFunctions {
      */
     #[CheckFile]
     #[CheckDir]
-    public function checkBagitFile(FileInfo $fi): void {
+    public function check80BagitFile(FileInfo $fi): void {
         $isBagIt = false;
-        if ($fi->type === 'dir') {
+        if ($fi->type === FileInfo::DROID_TYPEDIR) {
             if (file_exists($fi->path . '/bagit.txt')) {
                 $isBagIt = preg_match(self::BAGIT_REGEX, file_get_contents($fi->path . '/bagit.txt', false, null, 0, 1000)) === 1;
                 if ($isBagIt) {
@@ -246,13 +457,14 @@ class CheckFunctions {
             return;
         }
         $fi->info("BagIt", "BagIt bag recognized");
+        $fi->specialType = FileInfo::SPECIAL_BAGIT;
         if (isset($archive)) {
             $root = $this->tmpDir . '/' . $archive->getFilename();
             $archive->extractTo($this->tmpDir);
         }
         try {
-            $bag   = Bag::load($root);
-            $valid = $bag->isValid();
+            $bag       = Bag::load($root);
+            $fi->valid = $bag->isValid();
 
             foreach ($bag->getErrors() as $i) {
                 $fi->error("BagIt", $i['file'] . ': ' . $i['message']);
@@ -267,228 +479,36 @@ class CheckFunctions {
         }
     }
 
-    #[CheckDir]
-    public function checkValidDirname(FileInfo $fi): void {
-        if (preg_match('/^[A-Za-z0-9][-_A-Za-z0-9]*[A-Za-z0-9]$/', $fi->filename) !== 1) {
-            $fi->error("Invalid filename");
-        }
-    }
-
     #[CheckFile]
-    public function checkValidFilename(FileInfo $fi): void {
-        if (preg_match('/^[A-Za-z0-9][-_A-Za-z0-9]*[A-Za-z0-9][.][A-Za-z0-9]+$/', $fi->filename) !== 1) {
-            $fi->error("Invalid filename");
-        }
-    }
-
-    /**
-     * Check the extension is valid for a given MIME type according to the
-     * definitions read from the DROID signatures file.
-     * 
-     * Look at the class constructor to check sam hacks against DROID/finfo
-     * MIME type recognition mismatches
-     */
-    #[CheckFile]
-    public function checkMimeMeetsExtension(FileInfo $fi): void {
-        $mime      = mb_strtolower($fi->mime);
-        $validMime = $this->extToMime[$fi->extension] ?? [];
-        if (!in_array($mime, $validMime)) {
-            $fi->error("File content doesn't match extension", "Extension: $fi->extension, MIME type: $fi->mime, MIME types allowed for this extension: " . implode(', ', $validMime));
-        }
-    }
-
-    /**
-     * Checks XML files:
-     * 
-     * - loads the file with DTD validation turned on
-     * - checks if the file contains XML declaration
-     * - checks if the root element defines a schema location for its own namespace
-     * - if the schema location is provided, validates against the schema
-     */
-    #[CheckFile]
-    public function checkXml(FileInfo $fi): void {
-        if (!in_array($fi->mime, ['text/xml', 'application/xml']) && !($fi->mime === 'text/plain' && $fi->extension === 'xml')) {
+    public function check99AcceptedByArche(FileInfo $fi): void {
+        if (!empty($fi->specialType)) {
+            // BagIt, TEI-XML, etc. can not be properly checked based on the arche-assets
             return;
         }
-        $prev = libxml_use_internal_errors(true);
-        $xml  = new DOMDocument();
-
-        // parse with DTD validation turned on
-        $res = $xml->load($fi->path, LIBXML_DTDLOAD | LIBXML_DTDVALID | LIBXML_BIGLINES | LIBXML_COMPACT);
-        if ($res === false) {
-            $fi->error("XML validation", "Failed to parse the XML file with: " . print_r(libxml_get_last_error(), true));
-            return;
-        }
-
-        // basic checks
-        if ($fi->mime === "text/plain") {
-            $fi->error("XML validation", "Missing XML declaration");
-        } elseif (empty($xml->encoding)) {
-            $fi->warning("XML validation", "Encoding not defined");
-        }
-
-        $valid = [];
-        if ($xml->doctype !== null) {
-            $valid[] = $xml->validate();
-        }
-        foreach ($xml->childNodes as $child) {
-            if ($child instanceof \DOMProcessingInstruction && $child->nodeName === 'xml-model') {
-                preg_match('`href="([^"]+)"`', $child->nodeValue, $href);
-                $href = $href[1] ?? '';
-                preg_match('`type="([^"]+)"`', $child->nodeValue, $type);
-                $type = $type[1] ?? '';
-                preg_match('`schematypens="([^"]+)"`', $child->nodeValue, $ns);
-                $ns   = $ns[1] ?? '';
-                if (!empty($href)) {
-                    $fn = false;
-                    if (str_ends_with(strtolower($href), '.rng') || $type === 'application/relax-ng-compact-syntax' || $ns === 'http://relaxng.org/ns/structure/1.0') {
-                        $fn = 'relaxNGValidateSource';
-                    }
-                    if (str_ends_with(strtolower($href), '.xsd') || $ns === 'http://www.w3.org/2001/XMLSchema') {
-                        $fn = 'schemaValidateSource';
-                    }
-                    if ($fn) {
-                        if (!str_starts_with(strtolower($href), 'http')) {
-                            $href = $fi->directory . '/' . $href;
-                            if (!file_exists($href)) {
-                                $fi->error('XML validation', "Failed to read schema from $href", true);
-                                continue;
-                                ;
-                            }
-                        }
-                        $schema = @file_get_contents($href);
-                        if ($schema === false) {
-                            $fi->error('XML validation', "Failed to read schema from $href", true);
-                            continue;
-                        }
-                        $res = $xml->$fn($schema);
-                        if ($res) {
-                            $fi->info('XML validation', "Schema successfully validated against $href");
-                        } else {
-                            $fi->error('XML validation', "Schema validation against $href failed with: " . print_r(libxml_get_last_error(), true));
-                        }
-                        $valid[] = $res;
-                    }
-                }
-            }
-        }
-        if (count($valid) === 0) {
-            $fi->warning('XML validation', "Schema not defined");
-        }
-
-        libxml_use_internal_errors($prev);
-    }
-
-    /**
-     * Checks if odt/ods/docx/xlsx files are password protected
-     */
-    #[CheckFile]
-    public function checkPswdProtected(FileInfo $fi): void {
-        static $mime = [
-            'application/vnd.oasis.opendocument.spreadsheet',
-            'application/vnd.oasis.opendocument.text'
-        ];
-        if ($fi->mime === 'application/CDFV2-encrypted') {
-            $fi->error("Password protected file");
-        } elseif (in_array($fi->extension, ['odt', 'ods']) || in_array($fi->mime, $mime)) {
-            $archive   = new ZipArchive();
-            $archive->open($fi->path);
-            $xml       = new SimpleXMLElement(fread($archive->getStream('META-INF/manifest.xml'), 10485760));
-            $xml->registerXPathNamespace('manifest', 'urn:oasis:names:tc:opendocument:xmlns:manifest:1.0');
-            $encrypted = $xml->xpath('//manifest:encryption-data');
-            if (is_array($encrypted) && count($encrypted) > 0) {
-                $fi->error("Password protected file");
-            }
-            $archive->close();
-        }
-    }
-
-    /**
-     * 
-     * Check the PDF version and try to open to be sure that is doesnt have any pwd
-     * 
-     * @param string $file
-     * @return Error|null
-     */
-    #[CheckFile]
-    public function checkPdfFile(FileInfo $fi): void {
-        if (!empty($this->veraPdfPath)) {
-            return;
-        }
-        if ($fi->extension !== 'pdf' && $fi->mime !== 'application/pdf') {
-            return;
-        }
-        $cmd     = sprintf(
-            "%s --format json %s 2>/dev/null",
-            escapeshellcmd(self::VERAPDF_PATH),
-            escapeshellarg($fi->path)
-        );
-        $output  = [];
-        $retCode = null;
-        exec($cmd, $output, $retCode);
-        $result  = json_decode(implode("\n", $output)) ?: null;
-        $result  = $result?->report?->jobs;
-        if (isset($result[0]->validationResult)) {
-            $result = $result[0]->validationResult;
-            if ($result->compliant ?? false) {
-                $fi->info("PDF", "Compliant with the " . $result->profileName);
-            } else {
-                foreach ($result->details?->ruleSummaries ?? [] as $i) {
-                    $fi->error("PDF", "PDF/A rule $i->clause violated: $i->description");
-                }
-            }
-        } elseif (isset($result[0]->taskException)) {
-            $fi->error("PDF", $result[0]->taskException->exception);
-        }
-    }
-
-    /**
-     * 
-     * Checks the zip file, we extract them to know if it is pwd protected or not
-     * 
-     * If we have a pw protected one then we will put it to the $pwZips array
-     * 
-     */
-    #[CheckFile]
-    public function checkZipFile(FileInfo $fi): void {
-        if ($fi->extension !== 'zip' && $fi->mime !== "application/zip") {
-            return;
-        }
-        $za = new ZipArchive();
-        if ($za->open($fi->path) !== true) {
-            $fi->error("Zip", $za->getStatusString());
-            return;
-        }
-        $filesCount = $za->count();
-        for ($i = 0; $i < $filesCount; $i++) {
-            $res = $za->getStream($za->statIndex($i)['name']);
-            if ($res === false) {
-                $fi->error("Zip error", $za->getStatusString());
-            }
-        }
-    }
-
-    #[CheckFile]
-    public function checkAcceptedByArche(FileInfo $fi): void {
         $ext   = $this->archeFormatsByExtension[$fi->extension] ?? null;
         $mime  = $this->archeFormatsByMime[$fi->mime] ?? null;
         $valid = min($ext, $mime);
         $ext   = !empty($ext) ? $ext : 'not accepted';
         $mime  = !empty($mime) ? $mime : 'not accepted';
         if ($valid === null || $valid === '') {
-            $fi->error("File format not accepted", "MIME $fi->mime: $mime, extension $fi->extension: $ext");
+            $fi->error("Format not accepted", "MIME $fi->mime: $mime, extension $fi->extension: $ext");
         } elseif ($valid === 'accepted') {
-            $fi->warning("File format not preferred", "MIME $fi->mime: $mime, extension $fi->extension: $ext");
+            $fi->warning("Format not preferred", "MIME $fi->mime: $mime, extension $fi->extension: $ext");
         }
     }
 
-    #[CheckFile]
-    public function checkBom(FileInfo $fi): void {
-        $fh      = fopen($fi->path, 'r');
-        $content = fread($fh, 4);
-        fclose($fh);
-        if (in_array($content, $this->bom[4]) || in_array(substr($content, 0, 3), $this->bom[3]) || in_array(substr($content, 0, 2), $this->bom[2])) {
-            $fi->error('File contains Byte Order Mark');
-        }
+    private function getZipError(ZipArchive $za, bool | int $res): string {
+        return match ($res) {
+            ZipArchive::ER_EXISTS => 'File already exists',
+            ZipArchive::ER_INCONS => 'Archive inconsistent',
+            ZipArchive::ER_INVAL => 'Invalid argument',
+            ZipArchive::ER_MEMORY => 'Malloc failure',
+            ZipArchive::ER_NOENT => 'No such file',
+            ZipArchive::ER_NOZIP => 'Not a zip archive',
+            ZipArchive::ER_OPEN => 'Can not open file',
+            ZipArchive::ER_READ => 'Read error',
+            ZipArchive::ER_SEEK => 'Seek error',
+            false => $za->getStatusString(),
+        };
     }
 }

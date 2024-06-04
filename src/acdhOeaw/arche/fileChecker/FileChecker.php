@@ -41,11 +41,6 @@ class FileChecker {
     const HASH_FALLBACK = 'sha1';
     const HASH_DEFAULT  = 'xxh128';
 
-    static public function die(string $msg): void {
-        echo $msg;
-        exit(1);
-    }
-
     private string $tmpDir;
     private string $reportDir;
     private string $tmplDir;
@@ -64,12 +59,6 @@ class FileChecker {
      * @var array<string, mixed>
      */
     private array $cfg;
-
-    /**
-     * 
-     * @var array<string, string>
-     */
-    private array $hashes;
 
     /**
      * 
@@ -94,8 +83,8 @@ class FileChecker {
         $this->matchRegex   = isset($config['match']) ? "`" . $config['match'] . "`" : '';
         $this->skipWarnings = (bool) ($config['skipWarnings'] ?? false);
 
-        $this->tmpDir       = $config['tmpDir'];
-        $this->reportDir    = realpath($config['reportDir']);
+        $this->tmpDir    = $config['tmpDir'];
+        $this->reportDir = realpath($config['reportDir']);
         $this->checkDirExistsWritable($this->tmpDir, 'tmpDir');
         $this->checkDirExistsWritable($this->reportDir, 'reportDir');
 
@@ -115,120 +104,98 @@ class FileChecker {
         foreach ($rc->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
             $attr = array_map(fn($x) => $x->getName(), $method->getAttributes());
             if (in_array(CheckFile::class, $attr)) {
-                $this->checksFile[] = $method->getClosure($this->chkFunc);
+                $this->checksFile[$method->name] = $method->getClosure($this->chkFunc);
             }
             if (in_array(CheckDir::class, $attr)) {
-                $this->checksDir[] = $method->getClosure($this->chkFunc);
+                $this->checksDir[$method->name] = $method->getClosure($this->chkFunc);
             }
         }
+        ksort($this->checksFile);
+        ksort($this->checksDir);
     }
 
     /**
      * Recursively checks a given directory writing results in the
      * {reportsDir}/fileInfo.jsonl JSONlines file.
      */
-    public function check(string $dir, int $maxDepth = PHP_INT_MAX): bool {
+    public function check(string $dir, int $maxDepth = PHP_INT_MAX,
+                          bool $sortDroidOutput = false): bool {
         $this->checkDir    = realpath($dir);
-        $this->hashes      = [];
         $this->startDepth  = $maxDepth;
         $this->noErrors    = true;
         $this->checkOutput = new OutputFormatter("$this->reportDir/fileInfo.jsonl", OutputFormatter::FORMAT_JSONLINES);
-        
-        echo "\n### Computing the number of files and directories to analyze\n";
+
         if ($this->checkDir === '') {
             echo "\nERROR: Directory '$dir' does not exist\n";
             return false;
         }
-        $iter = new RecursiveDirectoryIterator($this->checkDir, RecursiveDirectoryIterator::SKIP_DOTS);
-        $iter = new RecursiveIteratorIterator($iter, RecursiveIteratorIterator::SELF_FIRST);
-        if (empty($this->matchRegex)) {
-            $count = iterator_count($iter);
-        } else {
-            $count = 0;
-            foreach ($iter as $i) {
-                $count += (int) preg_match($this->matchRegex, basename($i));
-            }
-        }
-        unset($iter);
-        $this->progressBar = new PB(0, $count);
 
-        echo "\n### Checking $this->checkDir...\n\n";
-        $dirInfo = FileInfo::fromPath($this->checkDir);
-        $this->checkDir($dirInfo, $maxDepth);
-        $dirInfo->save($this->checkOutput);
-        $this->checkOutput->close();
+        $droidOutput       = $this->runDroid($sortDroidOutput);
+        echo "\n### Running DROID...\n\n";
+        $this->progressBar = new PB(0, $this->getCountFromDroidOutput($droidOutput));
+
+        echo "\n### Processing. DROID output...\n\n";
+        $this->checkFromDroidOutput($droidOutput);
 
         echo "### Finished checking $this->checkDir - " . ($this->noErrors ? 'no errors found' : 'errors found') . "\n";
+
+        $this->checkOutput->close();
         return $this->noErrors;
     }
 
-    private function checkDir(FileInfo $dirInfo, int $depthToGo): void {
-        // don't validate the top-level directory        
-        if ($depthToGo < $this->startDepth && (empty($this->matchRegex) || preg_match($this->matchRegex, $dirInfo->filename))) {
-            foreach ($this->checksDir as $check) {
-                try {
-                    $check($dirInfo);
-                } catch (Exception $e) {
-                    $fileInfo->error(get_class($e), $e->getMessage());
-                }
-            }
-        }
+    private function checkFromDroidOutput(string $droidOutput): void {
+        $fh       = fopen($droidOutput, 'rb');
+        $header   = fgetcsv($fh);
+        $dirs     = [];
+        $hashes   = [];
+        $stdNames = [];
+        while (!feof($fh)) {
+            $line = fgetcsv($fh);
+            if (is_array($line) && count($line) === count($header)) {
+                $fileInfo = FileInfo::fromDroid(array_combine($header, $line));
 
-        $files = scandir($dirInfo->path);
-        if ($files === false) {
-            self::die("getFileList: Failed opening directory $dir for reading");
-        }
-        $files = array_diff($files, ['.', '..']);
+                if ($fileInfo->type === FileInfo::DROID_TYPEDIR) {
+                    $dirs[$fileInfo->droidId] = $fileInfo;
+                } else {
+                    $this->runChecks($fileInfo, $this->checksFile);
 
-        $filenameDuplicates = [];
-        foreach ($files as $entry) {
-            $path  = "$dirInfo->path/$entry";
-            $match = empty($this->matchRegex) || preg_match($this->matchRegex, $entry) === 1;
-            if (!$match) {
-                if (is_dir($path)) {
-                    $this->checkDir(FileInfo::fromPath($path), $depthToGo - 1);
-                }
-                continue;
-            }
-
-            echo "$entry\n";
-            $this->progressBar->advance();
-            echo "\n";
-            $fileInfo      = FileInfo::fromPath($path);
-            $dirInfo->size += $fileInfo->size;
-
-            $entryStd = mb_strtolower($entry);
-            if (isset($filenameDuplicates[$entryStd])) {
-                $fileInfo->error("Duplicated file", "Duplicates with $filenameDuplicates[$entryStd] on case-insensitive filesystems");
-            }
-            $filenameDuplicates[$entryStd] = $entry;
-
-            if ($fileInfo->type === 'dir' && $depthToGo > 0) {
-                echo "[entering $fileInfo->path]\n";
-                $this->checkDir($fileInfo, $depthToGo - 1);
-                echo "[going back to $dirInfo->path]\n";
-            } else {
-                foreach ($this->checksFile as $check) {
-                    try {
-                        $check($fileInfo);
-                    } catch (Exception $e) {
-                        $fileInfo->error(get_class($e), $e->getMessage());
+                    if (!is_link($fileInfo->path)) {
+                        $hash = $this->computeHash($fileInfo->path);
+                        if (isset($hashes[$hash])) {
+                            $fileInfo->error("Duplicated file", "Same hash as " . substr($hashes[$hash], strlen($this->checkDir) + 1));
+                        } else {
+                            $hashes[$hash] = $fileInfo->path;
+                        }
                     }
+
+                    $stdName = strtolower($fileInfo->path);
+                    if (isset($stdNames[$stdName])) {
+                        $fileInfo->error("Duplicated file", "File names duplication with " . $stdNames[$stdName] . " on a case-insensititve filesystems");
+                    } else {
+                        $stdNames[$stdName] = $fileInfo->filename;
+                    }
+
+                    $fileInfo->save($this->checkOutput);
+                    $this->progressBar->advance();
                 }
 
-                $hash = $this->computeHash($fileInfo->path);
-                if (isset($this->hashes[$hash])) {
-                    $fileInfo->error("Duplicated file", "Same hash as " . $this->hashes[$hash]);
+                if (!empty($fileInfo->droidParentId)) {
+                    $dirs[$fileInfo->droidParentId]->filesCount++;
                 }
-                $this->hashes[$hash] = $fileInfo->path;
 
-                $dirInfo->filesCount++;
+                $this->noErrors = $this->noErrors && $fileInfo->isValid($this->skipWarnings);
             }
-
-            $fileInfo->save($this->checkOutput);
-            $this->noErrors = $this->noErrors && $fileInfo->isValid($this->skipWarnings);
         }
-        $this->noErrors = $this->noErrors && $dirInfo->isValid($this->skipWarnings);
+        fclose($fh);
+
+        foreach ($dirs as $dirInfo) {
+            if ($dirInfo->path !== $this->checkDir) {
+                $this->runChecks($dirInfo, $this->checksDir);
+                $this->noErrors = $this->noErrors && $dirInfo->isValid($this->skipWarnings);
+                $dirInfo->save($this->checkOutput);
+                $this->progressBar->advance();
+            }
+        }
     }
 
     /**
@@ -255,7 +222,7 @@ class FileChecker {
         }
         while ($l = fgets($infh)) {
             $fi = FileInfo::fromJson($l);
-            foreach ($of as $i) {
+            foreach ($of as $x => $i) {
                 $fi->save($i[1], $i[0]);
             }
         }
@@ -294,16 +261,16 @@ class FileChecker {
         echo "\n### Finished reports generation\n";
     }
 
-    private function checkDirExistsWritable(string $dir,
-                                            string $type = "tempDir"): void {
-        $real = realpath($dir);
-        if (!is_dir($real) || !is_writable($real)) {
-            self::die("\nERROR $type ($dir) does't exist or isn't writable.\n");
+    private function checkDirExistsWritable(string $dir): void {
+        exec('mkdir -p ' . escapeshellarg($dir));
+        if (!is_writable($dir)) {
+            $real = realpath($dir);
+            throw new FileCheckerException("$dir ($real) does't exist or isn't writable");
         }
     }
 
     private function copyFileContent($from, $to): void {
-        $from = fopen($from, 'r') ?: self::die("Can't open $from for reading");
+        $from = fopen($from, 'r') ?: throw new FileCheckerException("Can't open $from for reading");
         while (!feof($from)) {
             fwrite($to, fread($from, 1048576));
         }
@@ -319,5 +286,77 @@ class FileChecker {
         }
         fclose($input);
         return hash_final($hash, false);
+    }
+
+    private function getCountFromDroidOutput(string $path): int {
+        $f = fopen($path, 'rb');
+        $n = 0;
+        while (!feof($f)) {
+            $n += substr_count(fread($f, 1047552), "\n");
+        }
+        fclose($f);
+        return $n;
+    }
+
+    /**
+     * 
+     * @param bool $sortOutput should output should be sorted by full path?
+     *   DROID output comes in the order of records on the filesystem. In some scenarios,
+     *   e.g. for running tests, a stable order can be needed. It can be enforced using
+     *   this parameter. It should not be used when not needed as sorting takes time
+     *   and for large number of files also a lot of memory.
+     * @return string
+     * @throws \RuntimeException
+     */
+    private function runDroid(bool $sortOutput = false): string {
+        $droidOutput = $this->tmpDir . '/droid.csv';
+        $output      = $ret         = null;
+        $cmd         = sprintf(
+            "%s -R %s -At none > %s 2>&1",
+            escapeshellarg(CheckFunctions::DROID_PATH),
+            escapeshellarg($this->checkDir),
+            escapeshellarg($droidOutput)
+        );
+        exec($cmd, $output, $ret);
+        if ($ret !== 0) {
+            throw new \RuntimeException("Running DOID failed with:\n" . file_get_contents($droidOutput));
+        }
+
+        if ($sortOutput) {
+            $fh     = fopen($droidOutput, 'rb');
+            $header = fgetcsv($fh);
+            $data   = [];
+            while ($l      = fgetcsv($fh)) {
+                if (count($l) > 2) {
+                    $data[$l[3]] = $l;
+                }
+            }
+            fclose($fh);
+            ksort($data);
+            $fh = fopen($droidOutput, 'wb');
+            fputcsv($fh, $header);
+            foreach ($data as $l) {
+                fputcsv($fh, $l);
+            }
+            fclose($fh);
+        }
+
+        return $droidOutput;
+    }
+
+    private function runChecks(FileInfo $fileInfo, array $checks): void {
+        try {
+            foreach ($checks as $check) {
+                try {
+                    $check($fileInfo);
+                } catch (LastCheckException $e) {
+                    throw $e;
+                } catch (Exception $e) {
+                    $fileInfo->error(get_class($e), $e->getMessage());
+                }
+            }
+        } catch (LastCheckException) {
+            
+        }
     }
 }

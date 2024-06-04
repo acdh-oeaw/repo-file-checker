@@ -3,7 +3,7 @@
 /*
  * The MIT License
  *
- * Copyright 2019 Austrian Centre for Digital Humanities.
+ * Copyright 2024 zozlak.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,36 +24,13 @@
  * THE SOFTWARE.
  */
 
-namespace acdhOeaw\arche\fileChecker\tests;
-
-use PHPUnit\Runner\Extension\Extension;
-use PHPUnit\Runner\Extension\Facade;
-use PHPUnit\Runner\Extension\ParameterCollection;
-use PHPUnit\TextUI\Configuration\Configuration;
-use PHPUnit\Event\TestRunner\ExecutionStarted;
-use PHPUnit\Event\TestRunner\ExecutionStartedSubscriber;
-use SebastianBergmann\CodeCoverage\CodeCoverage;
-use SebastianBergmann\CodeCoverage\Data\RawCodeCoverageData;
-use SebastianBergmann\CodeCoverage\Report\Clover;
-use acdhOeaw\arche\lib\Config;
+namespace acdhOeaw\arche\fileChecker;
 
 /**
- * Description of CoverageGen
+ * Exception indicating no further checks should be run on a given file/directory.
  *
  * @author zozlak
  */
-class Bootstrap implements Extension {
-
-    public function bootstrap(Configuration $configuration, Facade $facade,
-                              ParameterCollection $parameters): void {
-
-        $facade->registerSubscriber(new Init());
-    }
-}
-
-class Init implements ExecutionStartedSubscriber {
-
-    public function notify(ExecutionStarted $event): void {
-        exec(__DIR__ . '/../aux/install_deps.sh', $output, $ret);
-    }
+class LastCheckException extends FileCheckerException {
+    //put your code here
 }

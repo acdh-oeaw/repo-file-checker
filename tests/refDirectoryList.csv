@@ -1,0 +1,13 @@
+path;valid
+bagit;yes
+bagit/anotherBag;no
+bagit/anotherBag/data;yes
+duplicates;yes
+duplicates/child;yes
+emptyDir;no
+good;yes
+notAcceptedFormat;yes
+notPreferredFormat;yes
+passwordProtected;yes
+wrongContent;yes
+wrongFilename;yes
