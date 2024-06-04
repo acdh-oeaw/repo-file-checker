@@ -16,6 +16,7 @@ good;data.ods;File;9965;ods;application/vnd.oasis.opendocument.spreadsheet;;yes
 good;data.tsv;File;39;tsv;text/tab-separated-values;;yes
 good;data.xlsx;File;4860;xlsx;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;;yes
 good;html.html;File;1488;html;application/xhtml+xml;;yes
+good;image.jpg;File;1255;jpg;image/jpeg;;yes
 good;image.tif;File;1538;tif;image/tiff;;yes
 good;shiporder.xsd;File;1492;xsd;application/xml;xsd;yes
 good;sylk.csv;File;22;csv;text/csv;;yes
@@ -32,7 +33,6 @@ notAcceptedFormat;image.webp;File;244;webp;image/webp;;no
 notAcceptedFormat;not_PDF_A.pdf;File;14162;pdf;application/pdf;;no
 notAcceptedFormat;swf_standard_testfile.swf;File;31662;swf;application/x-shockwave-flash;;no
 notPreferredFormat;image.gif;File;632;gif;image/gif;;no
-notPreferredFormat;image.jpg;File;1255;jpg;image/jpeg;;no
 notPreferredFormat;image.png;File;1320;png;image/png;;no
 notPreferredFormat;shiporder.xml;File;558;xml;application/xml;;no
 notPreferredFormat;text.rtf;File;2431;rtf;application/rtf;;no
@@ -48,6 +48,7 @@ wrongContent;broken_pdf.pdf;File;23872;pdf;;;no
 wrongContent;broken_tif.tif;File;1394;tif;image/tiff;;no
 wrongContent;byte_order_mark.txt;File;12;txt;text/plain;;no
 wrongContent;image.jpg;File;1796;jpg;image/tiff;;no
+wrongContent;rotated.jpg;File;1032;jpg;image/jpeg;;no
 wrongContent;no_schema_location.xml;File;569;xml;application/xml;;no
 wrongContent;no_xml_declaration.xml;File;1552;xml;;;no
 wrongFilename;.hidden.txt;File;7;txt;text/plain;;no
