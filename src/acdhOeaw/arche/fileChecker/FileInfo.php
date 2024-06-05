@@ -48,14 +48,17 @@ class FileInfo {
     const SPECIAL_BAGIT   = 'bagit';
     const SPECIAL_XSD     = 'xsd';
 
-    static private $outputColumns = [
+    static private $outputColumns     = [
         self::OUTPUT_FILELIST => ['directory', 'filename', 'type', 'size', 'lastModified',
-            'extension', 'mime', 'specialType', 'valid'],
+            'extension', 'mime', 'specialType', 'valid', 'hasCategory'],
         self::OUTPUT_DIRLIST  => ['path', 'lastModified', 'valid'],
         self::OUTPUT_ERROR    => ['directory', 'filename', 'severity', 'errorType',
             'errorMessage'],
     ];
     static private finfo $fileInfo;
+    static private array $hasCategoryByExt  = [];
+    static private array $hasCategoryByMime = [];
+    static private array $hasCategoryByPuid = [];
 
     static public function fromJson(string $json): self {
         $fi = new FileInfo();
@@ -63,6 +66,30 @@ class FileInfo {
             $fi->$k = $v;
         }
         return $fi;
+    }
+
+    static private function loadHasCategory(): void {
+        if (count(self::$hasCategoryByExt) === 0) {
+            $dir  = \Composer\InstalledVersions::getInstallPath('acdh-oeaw/arche-assets');
+            $data = json_decode(file_get_contents($dir . '/AcdhArcheAssets/formats.json'));
+            $data = array_filter($data, fn($x) => !empty($x->ARCHE_category));
+            foreach ($data as $fd) {
+                foreach ($fd->extensions as $i) {
+                    self::$hasCategoryByExt[$i][] = $fd->ARCHE_category;
+                }
+                foreach ($fd->MIME_type as $i) {
+                    self::$hasCategoryByMime[$i][] = $fd->ARCHE_category;
+                }
+                if (!empty($fd->PRONOM_ID)) {
+                    foreach (explode(',', $fd->PRONOM_ID) as $i) {
+                        self::$hasCategoryByPuid[trim($i)][] = $fd->ARCHE_category;
+                    }
+                }
+            }
+            self::$hasCategoryByExt  = array_map(fn($x) => array_unique($x), self::$hasCategoryByExt);
+            self::$hasCategoryByMime = array_map(fn($x) => array_unique($x), self::$hasCategoryByMime);
+            self::$hasCategoryByPuid = array_map(fn($x) => array_unique($x), self::$hasCategoryByPuid);
+        }
     }
 
     static public function fromDroid(array $data) {
@@ -80,6 +107,7 @@ class FileInfo {
         $fi->droidParentId    = (int) $data['PARENT_ID'];
         $fi->droidExtMismatch = $data['EXTENSION_MISMATCH'] === 'true';
         $fi->droidFormatCount = (int) $data['FORMAT_COUNT'];
+        $fi->droidPuid        = $data['PUID'];
         $fi->valid            = true;
 
         switch ($data['PUID']) {
@@ -109,10 +137,12 @@ class FileInfo {
     public int $size;
     public int $filesCount;
     public bool $valid;
+    public string $hasCategory;
     public int $droidId;
     public int $droidParentId;
     public bool $droidExtMismatch;
     public int $droidFormatCount;
+    public string $droidPuid;
     public ?string $specialType = null;
 
     /**
@@ -146,6 +176,28 @@ class FileInfo {
 
     public function isDir(): bool {
         return $this->type === self::DROID_TYPEDIR;
+    }
+
+    public function assignHasCategory(): void {
+        self::loadHasCategory();
+
+        $matches = null;
+        if (isset(self::$hasCategoryByExt[$this->extension ?? -1])) {
+            $tmp     = self::$hasCategoryByExt[$this->extension];
+            $matches = $matches === null ? $tmp : array_intersect($matches, $tmp);
+        }
+        if (isset(self::$hasCategoryByMime[$this->mime ?? -1])) {
+            $tmp     = self::$hasCategoryByMime[$this->mime];
+            $matches = $matches === null ? $tmp : array_intersect($matches, $tmp);
+        }
+        if (isset(self::$hasCategoryByPuid[$this->droidPuid ?? -1])) {
+            $tmp     = self::$hasCategoryByPuid[$this->droidPuid];
+            $matches = $matches === null ? $tmp : array_intersect($matches, $tmp);
+        }
+        $matches ??= [];
+        if (count($matches) === 1) {
+            $this->hasCategory = reset($matches);
+        }
     }
 
     public function save(OutputFormatter $handle, ?string $format = null): void {

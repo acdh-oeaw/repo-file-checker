@@ -164,10 +164,8 @@ class CheckFunctions {
             throw new LastCheckException();
         }
         $filesCount = $za->count();
-        for ($i = 0;
-            $i < $filesCount;
-            $i++) {
-            $res = $za->getStreamIndex($i);
+        for ($i = 0; $i < $filesCount; $i++) {
+            $res = $za->getStream($za->getNameIndex($i)); // ZipFile::getStreamName() introuduced only in PHP 8.2
             if ($res === false) {
                 $error = $za->getStatusString();
                 if ($error === 'No password provided') {

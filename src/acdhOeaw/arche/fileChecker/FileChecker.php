@@ -175,6 +175,7 @@ class FileChecker {
                         $stdNames[$stdName] = $fileInfo->filename;
                     }
 
+                    $fileInfo->assignHasCategory();
                     $fileInfo->save($this->checkOutput);
                     $this->progressBar->advance();
                 }
