@@ -414,8 +414,9 @@ class CheckFunctions {
         $retCode = null;
         exec($cmd, $output, $retCode);
         if ($retCode !== 0) {
-            $msg = implode("\n", array_filter($output, fn($x) => str_starts_with($x, 'ERROR')));
-            $fi->error("Corrupted image", $msg);
+            // not reliable due to different reporting on different gdal and python versions
+            //$msg = implode("\n", array_filter($output, fn($x) => str_starts_with($x, 'ERROR')));
+            $fi->error("Corrupted image", '');
         }
         if (file_exists($tmpfile)) {
             unlink($tmpfile);
