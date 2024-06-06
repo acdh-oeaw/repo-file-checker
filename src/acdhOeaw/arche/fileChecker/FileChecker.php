@@ -85,9 +85,9 @@ class FileChecker {
         $this->skipWarnings = (bool) ($config['skipWarnings'] ?? false);
 
         $this->tmpDir    = $config['tmpDir'];
-        $this->reportDir = realpath($config['reportDir']);
-        $this->checkDirExistsWritable($this->tmpDir, 'tmpDir');
-        $this->checkDirExistsWritable($this->reportDir, 'reportDir');
+        $this->reportDir = $config['reportDir'];
+        $this->checkDirExistsWritable($this->tmpDir);
+        $this->checkDirExistsWritable($this->reportDir);
 
         if (!$config['overwrite']) {
             $this->reportDir = $this->reportDir . '/' . date('Y_m_d_H_i_s');
@@ -113,6 +113,10 @@ class FileChecker {
         }
         ksort($this->checksFile);
         ksort($this->checksDir);
+    }
+
+    public function __destruct() {
+        system("rm -fR " . escapeshellarg($this->tmpDir));
     }
 
     /**
