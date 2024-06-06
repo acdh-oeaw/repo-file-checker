@@ -14,7 +14,7 @@ jobs:
     - name: test
       run: |
         docker run -t --rm -v `pwd`:/mnt -w /mnt -e LC_ALL=C.utf8 -e LANG=C.utf8 --entrypoint /mnt/vendor/bin/phpunit acdhch/arche-ingest
-        #RET=1
-        #docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/bin/arche-filechecker acdhch/arche-ingest /mnt/tests/data/ /mnt/tests/reports/ || RET=0
-        #exit $RET
+        RET=1
+        docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/bin/arche-filechecker acdhch/arche-ingest /mnt/tests/data/ /mnt/tests/reports/ || RET=0
+        exit $RET
 
