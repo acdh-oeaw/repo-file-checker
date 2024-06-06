@@ -36,7 +36,7 @@ use acdhOeaw\arche\fileChecker\FileChecker;
 class FilecheckerTest extends \PHPUnit\Framework\TestCase {
 
     const CSV_SEP      = ';';
-    const TMP_DIR      = '/tmp';
+    const TMP_DIR      = '/tmp/filechecker';
     const REPORTS_DIR  = __DIR__ . '/reports';
     const DATA_DIR     = __DIR__ . '/data';
     const DEFAULT_OPTS = [
@@ -166,10 +166,12 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
         $actual = $this->normalizeDirectory($actual);
 
         $countExpected = [];
-        foreach ($expected as $i) {
+        foreach ($expected as &$i) {
             $path                 = $i['directory'] . '/' . $i['filename'];
             $countExpected[$path] = ($countExpected[$path] ?? 0) + 1;
+            $i['errorMessage']    = str_replace('%BASEDIR%', __DIR__, $i['errorMessage']);
         }
+        unset($i);
         $countActual = [];
         foreach ($actual as $i) {
             $path               = $i['directory'] . '/' . $i['filename'];
@@ -190,8 +192,8 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
             }
         }
 
-        $this->sort($actual, ['errorType']);
-        $this->sort($expected, ['errorType']);
+        $this->sort($actual, ['errorType', 'errorMessage']);
+        $this->sort($expected, ['errorType', 'errorMessage']);
     }
 
     private function sort(array &$data, array $otherCols = []): void {
