@@ -77,6 +77,7 @@ class FileChecker {
      * @param array<string, mixed> $config
      */
     public function __construct(array $config) {
+        $config['tmpDir']   .= '/filechecker' . rand();
         $this->chkFunc      = new CheckFunctions($config);
         $this->cfg          = $config;
         $this->tmplDir      = realpath(__DIR__ . '/../../../../template');
@@ -310,7 +311,7 @@ class FileChecker {
      * @throws \RuntimeException
      */
     private function runDroid(bool $sortOutput = false): string {
-        $droidOutput = $this->tmpDir . '/droid' . rand() . '.csv';
+        $droidOutput = $this->tmpDir . '/droid.csv';
         $output      = $ret         = null;
         $cmd         = sprintf(
             "%s -R %s -At none > %s 2>&1",
