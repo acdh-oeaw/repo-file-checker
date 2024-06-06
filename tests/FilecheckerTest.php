@@ -36,7 +36,7 @@ use acdhOeaw\arche\fileChecker\FileChecker;
 class FilecheckerTest extends \PHPUnit\Framework\TestCase {
 
     const CSV_SEP      = ';';
-    const TMP_DIR      = 1;
+    const TMP_DIR      = '/tmp';
     const REPORTS_DIR  = __DIR__ . '/reports';
     const DATA_DIR     = __DIR__ . '/data';
     const DEFAULT_OPTS = [
