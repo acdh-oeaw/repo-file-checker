@@ -13,8 +13,8 @@ jobs:
       run: composer update
     - name: test
       run: |
-        vendor/bin/phpunit
+        docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/vendor/bin/phpunit acdhch/arche-ingest
         RET=1
-        mkdir -p tests/reports && bin/arche-filechecker --tmpDir /tmp tests/data/ tests/reports/ || RET=0
+        docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/bin/arche-filechecker acdhch/arche-ingest /mnt/tests/data/ /mnt/tests/reports/ || RET=0
         exit $RET
 
