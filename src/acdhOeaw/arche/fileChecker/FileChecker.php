@@ -134,6 +134,10 @@ class FileChecker {
             echo "\nERROR: Directory '$dir' does not exist\n";
             return false;
         }
+        if (!str_ends_with(strtolower($_SERVER['LC_ALL'] ?? ''), 'utf8')) {
+            echo "\nERROR: non-UTF8 locale\n";
+            return false;
+        }
 
         $droidOutput       = $this->runDroid($sortDroidOutput);
         echo "\n### Running DROID...\n\n";
@@ -226,7 +230,7 @@ class FileChecker {
             $of[] = [FileInfo::OUTPUT_FILELIST, new OutputFormatter("$this->reportDir/fileList.csv", OutputFormatter::FORMAT_CSV, FileInfo::getCsvHeader(FileInfo::OUTPUT_FILELIST))];
             $of[] = [FileInfo::OUTPUT_DIRLIST, new OutputFormatter("$this->reportDir/directoryList.csv", OutputFormatter::FORMAT_CSV, FileInfo::getCsvHeader(FileInfo::OUTPUT_DIRLIST))];
         }
-        while ($l = fgets($infh)) {
+        while ($l = trim(fgets($infh))) {
             $fi = FileInfo::fromJson($l);
             foreach ($of as $x => $i) {
                 $fi->save($i[1], $i[0]);
