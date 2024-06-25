@@ -55,7 +55,6 @@ class FileInfo {
         self::OUTPUT_ERROR    => ['directory', 'filename', 'severity', 'errorType',
             'errorMessage'],
     ];
-    static private finfo $fileInfo;
     static private array $hasCategoryByExt  = [];
     static private array $hasCategoryByMime = [];
     static private array $hasCategoryByPuid = [];

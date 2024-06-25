@@ -319,7 +319,7 @@ class FileChecker {
      * @throws \RuntimeException
      */
     private function runDroid(bool $sortOutput = false): string {
-        $droidOutput = $this->tmpDir . '/droid.csv';
+        $droidOutput = $this->reportDir . '/droid.csv';
         $output      = $ret         = null;
         $cmd         = sprintf(
             "%s -R %s -At none > %s 2>&1",
