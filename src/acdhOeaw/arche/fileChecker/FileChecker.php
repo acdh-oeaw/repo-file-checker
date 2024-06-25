@@ -77,6 +77,11 @@ class FileChecker {
      * @param array<string, mixed> $config
      */
     public function __construct(array $config) {
+        if (!str_ends_with(str_replace('-', '', strtolower($_SERVER['LC_ALL'] ?? $_SERVER['LANG'] ?? '')), 'utf8')) {
+            echo "\nERROR: non-UTF8 locale\n";
+            return false;
+        }
+        
         $config['tmpDir']   .= '/filechecker' . rand();
         $this->chkFunc      = new CheckFunctions($config);
         $this->cfg          = $config;
@@ -132,10 +137,6 @@ class FileChecker {
 
         if ($this->checkDir === '') {
             echo "\nERROR: Directory '$dir' does not exist\n";
-            return false;
-        }
-        if (!str_ends_with(strtolower($_SERVER['LC_ALL'] ?? ''), 'utf8')) {
-            echo "\nERROR: non-UTF8 locale\n";
             return false;
         }
 
