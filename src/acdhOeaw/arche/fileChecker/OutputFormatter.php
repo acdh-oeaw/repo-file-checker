@@ -38,6 +38,7 @@ class OutputFormatter {
     const FORMAT_CSV       = 'csv';
     const CSV_SEPARATOR    = ';';
     const CSV_ESCAPE       = '"';
+    const JSON_FLAGS       = JSON_UNESCAPED_SLASHES | JSON_INVALID_UTF8_SUBSTITUTE | JSON_THROW_ON_ERROR | JSON_UNESCAPED_UNICODE;
 
     /**
      * 
@@ -61,8 +62,8 @@ class OutputFormatter {
 
     public function write(mixed $data): void {
         $data        = match ($this->format) {
-            self::FORMAT_JSONLINES => json_encode($data, JSON_UNESCAPED_SLASHES) . "\n",
-            self::FORMAT_JSON => ($this->first ? '' : ",\n") . json_encode($data, JSON_UNESCAPED_SLASHES),
+            self::FORMAT_JSONLINES => json_encode($data, self::JSON_FLAGS) . "\n",
+            self::FORMAT_JSON => ($this->first ? '' : ",\n") . json_encode($data, self::JSON_FLAGS),
             self::FORMAT_CSV => implode(self::CSV_SEPARATOR, array_map(fn($x) => is_bool($x) ? ($x ? 'yes' : 'no') : (is_string($x) ? self::CSV_ESCAPE . str_replace(self::CSV_ESCAPE, self::CSV_ESCAPE . self::CSV_ESCAPE, $x) . self::CSV_ESCAPE : $x), $data)) . "\n",
         };
         fwrite($this->fh, $data);

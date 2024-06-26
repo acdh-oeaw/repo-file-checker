@@ -81,7 +81,7 @@ class FileChecker {
             echo "\nERROR: non-UTF8 locale\n";
             return false;
         }
-        
+
         $config['tmpDir']   .= '/filechecker' . rand();
         $this->chkFunc      = new CheckFunctions($config);
         $this->cfg          = $config;
@@ -231,10 +231,13 @@ class FileChecker {
             $of[] = [FileInfo::OUTPUT_FILELIST, new OutputFormatter("$this->reportDir/fileList.csv", OutputFormatter::FORMAT_CSV, FileInfo::getCsvHeader(FileInfo::OUTPUT_FILELIST))];
             $of[] = [FileInfo::OUTPUT_DIRLIST, new OutputFormatter("$this->reportDir/directoryList.csv", OutputFormatter::FORMAT_CSV, FileInfo::getCsvHeader(FileInfo::OUTPUT_DIRLIST))];
         }
-        while ($l = trim(fgets($infh))) {
-            $fi = FileInfo::fromJson($l);
-            foreach ($of as $x => $i) {
-                $fi->save($i[1], $i[0]);
+        while (!feof($infh)) {
+            $l = trim(fgets($infh));
+            if (!empty($l)) {
+                $fi = FileInfo::fromJson($l);
+                foreach ($of as $x => $i) {
+                    $fi->save($i[1], $i[0]);
+                }
             }
         }
         fclose($infh);
@@ -330,7 +333,7 @@ class FileChecker {
         );
         exec($cmd, $output, $ret);
         if ($ret !== 0) {
-            throw new \RuntimeException("Running DOID failed with:\n" . file_get_contents($droidOutput));
+            throw new \RuntimeException("Running DROID failed with:\n" . file_get_contents($droidOutput));
         }
 
         if ($sortOutput) {
