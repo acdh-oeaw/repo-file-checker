@@ -219,7 +219,6 @@ class FileChecker {
                 $this->noErrors = $this->noErrors && $dirInfo->isValid($this->skipWarnings);
                 $dirInfo->save($this->checkOutput);
                 $this->progressBar->advance();
-                break;
             }
         }
     }

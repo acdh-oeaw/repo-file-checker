@@ -58,7 +58,7 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
         }
 
         $ch = new FileChecker(self::DEFAULT_OPTS);
-        $ch->check(__DIR__ . '/data', PHP_INT_MAX, true);
+        $ch->check(__DIR__ . '/data', false, true);
         $ch->generateReports(true, true);
     }
 
