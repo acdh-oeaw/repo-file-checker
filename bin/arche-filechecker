@@ -40,7 +40,7 @@ $parser->addArgument('--tmpDir', default: sys_get_temp_dir(), help: "Temporary d
 $parser->addArgument('--csv', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, CSV reports are generated on top of the standard JSON linse output.");
 $parser->addArgument('--html', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, HTML reports are generated on top of the standard JSON lines output.");
 $parser->addArgument('--overwrite', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, the report is generated directly in the reportDir without creation of a timestamp-based directory.");
-$parser->addArgument('--match', help: "If provided, only files and directories matching a given regular expression are being checked. If the directory check is skipped, the directory content is still being checked.");
+$parser->addArgument('--continue', action: ArgumentParser::ACTION_STORE_TRUE, help: "If present, the checks will continue from the point they were interrupted. Note that this implicitly turns on --overwrite and requires you to specify the final reportDir just like if you were using the --overwrite option.");
 $parser->addArgument('--redmineIssueId', help: "If provided (along with --redmineUser and --redminePswd), the corresponding redmine id will be updated with the check results. Both repo-filechecker issue id or its parent issue id can be provided.");
 $parser->addArgument('--redmineUser');
 $parser->addArgument('--redminePswd');
@@ -53,11 +53,14 @@ $parser->addArgument('--skipWarnings', action: ArgumentParser::ACTION_STORE_TRUE
 $parser->addArgument('directoryToCheck');
 $parser->addArgument('reportDir');
 $args   = $parser->parseArgs();
+if ($args->continue) {
+    $args->overwrite = true;
+}
 
 $ret = false;
 try {
     $ch  = new FileChecker((array) $args);
-    $ret = $ch->check($args->directoryToCheck);
+    $ret = $ch->check($args->directoryToCheck, $args->continue);
     $ch->generateReports($args->csv, $args->html);
 
     if (!empty($args->redmineId)) {

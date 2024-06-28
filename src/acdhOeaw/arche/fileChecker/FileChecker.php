@@ -47,7 +47,6 @@ class FileChecker {
     private string $checkDir;
     private string $matchRegex;
     private CheckFunctions $chkFunc;
-    private int $startDepth;
     private bool $noErrors;
     private bool $skipWarnings;
     private OutputFormatter $checkOutput;
@@ -128,24 +127,24 @@ class FileChecker {
      * Recursively checks a given directory writing results in the
      * {reportsDir}/fileInfo.jsonl JSONlines file.
      */
-    public function check(string $dir, int $maxDepth = PHP_INT_MAX,
+    public function check(string $dir, bool $continue = false,
                           bool $sortDroidOutput = false): bool {
         $this->checkDir    = realpath($dir);
-        $this->startDepth  = $maxDepth;
         $this->noErrors    = true;
-        $this->checkOutput = new OutputFormatter("$this->reportDir/fileInfo.jsonl", OutputFormatter::FORMAT_JSONLINES);
+        $outputPath        = "$this->reportDir/fileInfo.jsonl";
+        $this->checkOutput = new OutputFormatter($outputPath, OutputFormatter::FORMAT_JSONLINES, null, $continue);
 
         if ($this->checkDir === '') {
             echo "\nERROR: Directory '$dir' does not exist\n";
             return false;
         }
 
-        $droidOutput       = $this->runDroid($sortDroidOutput);
         echo "\n### Running DROID...\n\n";
-        $this->progressBar = new PB(0, $this->getCountFromDroidOutput($droidOutput));
+        $droidOutput       = $this->runDroid($sortDroidOutput, $continue);
+        $this->progressBar = new PB(0, $this->getLinesCount($droidOutput) - 1);
 
         echo "\n### Processing. DROID output...\n\n";
-        $this->checkFromDroidOutput($droidOutput);
+        $this->checkFromDroidOutput($droidOutput, $continue ? $outputPath : '');
 
         echo "### Finished checking $this->checkDir - " . ($this->noErrors ? 'no errors found' : 'errors found') . "\n";
 
@@ -153,7 +152,12 @@ class FileChecker {
         return $this->noErrors;
     }
 
-    private function checkFromDroidOutput(string $droidOutput): void {
+    private function checkFromDroidOutput(string $droidOutput, string $continue): void {
+        $skip = 0;
+        if (!empty($continue)) {
+            $skip = $this->getLinesCount($continue) - 1;
+        }
+
         $fh       = fopen($droidOutput, 'rb');
         $header   = fgetcsv($fh);
         $dirs     = [];
@@ -164,9 +168,18 @@ class FileChecker {
             if (is_array($line) && count($line) === count($header)) {
                 $fileInfo = FileInfo::fromDroid(array_combine($header, $line));
 
+                if (!empty($fileInfo->droidParentId)) {
+                    $dirs[$fileInfo->droidParentId]->filesCount++;
+                }
+                
                 if ($fileInfo->type === FileInfo::DROID_TYPEDIR) {
                     $dirs[$fileInfo->droidId] = $fileInfo;
                 } else {
+                    if ($skip > 0) {
+                        $skip--;
+                        $this->progressBar->advance();
+                        continue;
+                    }
                     $this->runChecks($fileInfo, $this->checksFile);
 
                     if (!is_link($fileInfo->path)) {
@@ -190,10 +203,6 @@ class FileChecker {
                     $this->progressBar->advance();
                 }
 
-                if (!empty($fileInfo->droidParentId)) {
-                    $dirs[$fileInfo->droidParentId]->filesCount++;
-                }
-
                 $this->noErrors = $this->noErrors && $fileInfo->isValid($this->skipWarnings);
             }
         }
@@ -201,10 +210,16 @@ class FileChecker {
 
         foreach ($dirs as $dirInfo) {
             if ($dirInfo->path !== $this->checkDir) {
+                if ($skip > 0) {
+                    $skip--;
+                    $this->progressBar->advance();
+                    continue;
+                }
                 $this->runChecks($dirInfo, $this->checksDir);
                 $this->noErrors = $this->noErrors && $dirInfo->isValid($this->skipWarnings);
                 $dirInfo->save($this->checkOutput);
                 $this->progressBar->advance();
+                break;
             }
         }
     }
@@ -302,9 +317,9 @@ class FileChecker {
         return hash_final($hash, false);
     }
 
-    private function getCountFromDroidOutput(string $path): int {
+    private function getLinesCount(string $path): int {
         $f = fopen($path, 'rb');
-        $n = 0;
+        $n = fread($f, 1) === '' ? 0 : 1;
         while (!feof($f)) {
             $n += substr_count(fread($f, 1047552), "\n");
         }
@@ -322,10 +337,13 @@ class FileChecker {
      * @return string
      * @throws \RuntimeException
      */
-    private function runDroid(bool $sortOutput = false): string {
+    private function runDroid(bool $sortOutput = false, bool $continue = false): string {
         $droidOutput = $this->reportDir . '/droid.csv';
-        $output      = $ret         = null;
-        $cmd         = sprintf(
+        if ($continue) {
+            return $droidOutput;
+        }
+        $output = $ret    = null;
+        $cmd    = sprintf(
             "%s -R %s -At none > %s 2>&1",
             escapeshellarg(CheckFunctions::DROID_PATH),
             escapeshellarg($this->checkDir),

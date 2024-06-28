@@ -49,13 +49,17 @@ class OutputFormatter {
     private bool $first = true;
 
     public function __construct(string $filename, string $format,
-                                ?string $header = null) {
-        $this->fh     = fopen($filename, 'w') ?: FileChecker::die("Failed to open $filename for writing");
+                                ?string $header = null, bool $continue = false) {
+        if ($continue && !in_array($format, [self::FORMAT_JSONLINES, self::FORMAT_CSV])) {
+            throw new FileCheckerException('continuing is possible only for JSON lines and CSV formats');
+        }
+
+        $this->fh     = fopen($filename, $continue ? 'a' : 'w') ?: FileChecker::die("Failed to open $filename for writing");
         $this->format = $format;
 
         if ($format === self::FORMAT_JSON) {
             fwrite($this->fh, "[\n");
-        } elseif ($format === self::FORMAT_CSV) {
+        } elseif ($format === self::FORMAT_CSV && !$continue) {
             fwrite($this->fh, $header);
         }
     }
