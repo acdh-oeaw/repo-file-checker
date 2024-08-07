@@ -165,13 +165,16 @@ class FileChecker {
         $stdNames = [];
         while (!feof($fh)) {
             $line = fgetcsv($fh);
+            if (is_array($line) && count($line) < count($header)) {
+                $line = array_pad($line, count($header), '');
+            }
             if (is_array($line) && count($line) === count($header)) {
                 $fileInfo = FileInfo::fromDroid(array_combine($header, $line));
 
                 if (!empty($fileInfo->droidParentId)) {
                     $dirs[$fileInfo->droidParentId]->filesCount++;
                 }
-                
+
                 if ($fileInfo->type === FileInfo::DROID_TYPEDIR) {
                     $dirs[$fileInfo->droidId] = $fileInfo;
                 } else {
