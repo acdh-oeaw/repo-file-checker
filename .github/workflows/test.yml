@@ -8,24 +8,25 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    - uses: mxschmitt/action-tmate@v3
+    #- uses: mxschmitt/action-tmate@v3
     - name: composer
       run: composer update
-    #- name: integration tests
+    - name: integration tests
+      run: |
+        docker run -t --rm -v `pwd`:/mnt -w /mnt -e LC_ALL=C.utf8 -e LANG=C.utf8 --entrypoint /mnt/vendor/bin/phpunit acdhch/arche-ingest
+        RET=1
+        docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/bin/arche-filechecker acdhch/arche-ingest /mnt/tests/data/ /mnt/tests/reports/ || RET=0
+        exit $RET
+    # requires a specific environment to run (e.g. gdal-bin) so won't work on a vanila github actions worker
+    #- name: unit tests
     #  run: |
-    #    docker run -t --rm -v `pwd`:/mnt -w /mnt -e LC_ALL=C.utf8 -e LANG=C.utf8 --entrypoint /mnt/vendor/bin/phpunit acdhch/arche-ingest
-    #    RET=1
-    #    docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/bin/arche-filechecker acdhch/arche-ingest /mnt/tests/data/ /mnt/tests/reports/ || RET=0
-    #    exit $RET
-    - name: unit tests
-      run: |
-        mkdir -p build/logs
-        XDEBUG_MODE=coverage vendor/bin/phpunit
-    - name: coveralls
-      run: |
-        export COVERALLS_RUN_LOCALLY=1
-        export COVERALLS_REPO_TOKEN=${{ secrets.coverallsToken }}
-        rm -fR composer.json composer.lock vendor
-        composer require php-coveralls/php-coveralls
-        php vendor/bin/php-coveralls -v
+    #    mkdir -p build/logs
+    #    XDEBUG_MODE=coverage vendor/bin/phpunit
+    #- name: coveralls
+    #  run: |
+    #    export COVERALLS_RUN_LOCALLY=1
+    #    export COVERALLS_REPO_TOKEN=${{ secrets.coverallsToken }}
+    #    rm -fR composer.json composer.lock vendor
+    #    composer require php-coveralls/php-coveralls
+    #    php vendor/bin/php-coveralls -v
 
