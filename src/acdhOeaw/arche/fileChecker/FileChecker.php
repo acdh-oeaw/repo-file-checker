@@ -183,9 +183,12 @@ class FileChecker {
                         $this->progressBar->advance();
                         continue;
                     }
+                    if (!file_exists($fileInfo->path)) {
+                        $fileInfo->error('Removed', "File removed during the filechecker run");
+                    }
                     $this->runChecks($fileInfo, $this->checksFile);
 
-                    if (!is_link($fileInfo->path)) {
+                    if (!is_link($fileInfo->path) && file_exists($fileInfo->path)) {
                         $hash = $this->computeHash($fileInfo->path);
                         if (isset($hashes[$hash])) {
                             $fileInfo->error("Duplicated file", "Same hash as " . substr($hashes[$hash], strlen($this->checkDir) + 1));
