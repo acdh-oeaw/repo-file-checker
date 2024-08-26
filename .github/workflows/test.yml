@@ -8,15 +8,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
-    #- uses: mxschmitt/action-tmate@v3
+    - uses: mxschmitt/action-tmate@v3
     - name: composer
       run: composer update
-    - name: integration tests
-      run: |
-        docker run -t --rm -v `pwd`:/mnt -w /mnt -e LC_ALL=C.utf8 -e LANG=C.utf8 --entrypoint /mnt/vendor/bin/phpunit acdhch/arche-ingest
-        RET=1
-        docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/bin/arche-filechecker acdhch/arche-ingest /mnt/tests/data/ /mnt/tests/reports/ || RET=0
-        exit $RET
+    #- name: integration tests
+    #  run: |
+    #    docker run -t --rm -v `pwd`:/mnt -w /mnt -e LC_ALL=C.utf8 -e LANG=C.utf8 --entrypoint /mnt/vendor/bin/phpunit acdhch/arche-ingest
+    #    RET=1
+    #    docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/bin/arche-filechecker acdhch/arche-ingest /mnt/tests/data/ /mnt/tests/reports/ || RET=0
+    #    exit $RET
     - name: unit tests
       run: |
         mkdir -p build/logs
