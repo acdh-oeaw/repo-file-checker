@@ -352,7 +352,7 @@ class CheckFunctions {
         if (isset($result[0]->validationResult)) {
             $result = $result[0]->validationResult;
             if ($result->compliant ?? false) {
-                $fi->info("PDF", "Compliant with the " . $result->profileName);
+                //$fi->info("PDF", "Compliant with the " . $result->profileName);
             } else {
                 foreach ($result->details?->ruleSummaries ?? [] as $i) {
                     $fi->error("PDF", "PDF/A rule $i->clause violated: $i->description");
