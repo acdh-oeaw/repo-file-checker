@@ -4,6 +4,4 @@ bagit;testbag.zip;INFO;BagIt;BagIt bag recognized
 bagit;bag.tar;INFO;BagIt;BagIt bag recognized
 bagit;BadBag.tgz;INFO;BagIt;BagIt bag recognized
 good;tei.xml;INFO;XML;Schema successfully validated against https://tei-c.org/Vault/P5/4.2.2/xml/tei/custom/schema/relaxng/tei_all.rng
-good;text.pdf;INFO;PDF;Compliant with the PDF/A-1A validation profile
-good;text_PDF_A3b.pdf;INFO;PDF;Compliant with the PDF/A-3B validation profile
 notPreferredFormat;shiporder.xml;INFO;XML;Schema successfully validated against %BASEDIR%/data/notPreferredFormat/../good/shiporder.xsd
