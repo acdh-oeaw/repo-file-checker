@@ -124,7 +124,7 @@ class CheckFunctions {
 
     #[CheckDir]
     public function check01ValidDirname(FileInfo $fi): void {
-        if (preg_match('/^[A-Za-z0-9][-_A-Za-z0-9]*[A-Za-z0-9]$/', $fi->filename) !== 1) {
+        if (preg_match('/^(?:[A-Za-z0-9][-_A-Za-z0-9]*[A-Za-z0-9]|[A-Za-z0-9]{0,2})$/', $fi->filename) !== 1) {
             $fi->error("Invalid filename");
         }
     }
@@ -138,7 +138,7 @@ class CheckFunctions {
 
     #[CheckFile]
     public function check01ValidFilename(FileInfo $fi): void {
-        if (preg_match('/^[A-Za-z0-9][-_A-Za-z0-9]*[A-Za-z0-9][.][A-Za-z0-9]+$/', $fi->filename) !== 1) {
+        if (preg_match('/^(?:[A-Za-z0-9][-_A-Za-z0-9]*[A-Za-z0-9]|[A-Za-z0-9]{0,2})[.][A-Za-z0-9]+$/', $fi->filename) !== 1) {
             $fi->error("Invalid filename");
         }
     }
