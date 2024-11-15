@@ -37,10 +37,11 @@ use acdhOeaw\arche\fileChecker\attributes\CheckDir;
 
 class CheckFunctions {
 
-    const VERAPDF_PATH   = __DIR__ . '/../../../../aux/verapdf/verapdf';
-    const DROID_PATH     = __DIR__ . '/../../../../aux/droid/droid.sh';
-    const SIGNATURES_DIR = __DIR__ . '/../../../../aux/droid/user/signature_files/';
-    const BAGIT_REGEX    = '/^BagIt-Version: [0-9]+[.][0-9]+/';
+    const VERAPDF_PATH    = __DIR__ . '/../../../../aux/verapdf/verapdf';
+    const DROID_PATH      = __DIR__ . '/../../../../aux/droid/droid.sh';
+    const SIGNATURES_DIR  = __DIR__ . '/../../../../aux/droid/user/signature_files/';
+    const BAGIT_REGEX     = '/^BagIt-Version: [0-9]+[.][0-9]+/';
+    const FILES_TO_REMOVE = ['Thumbs.db', '.DS_Store'];
 
     /**
      * 
@@ -64,7 +65,7 @@ class CheckFunctions {
      * 
      * @var array<int, array<string>>
      */
-    private array $bom          = [];
+    private array $bom           = [];
     private string $tmpDir;
     private string $gdalCalcPath = '/usr/bin/gdal_calc.py';
 
@@ -133,6 +134,15 @@ class CheckFunctions {
     public function check02EmptyDir(FileInfo $fi): void {
         if ($fi->filesCount === 0) {
             $fi->error("Empty directory");
+        }
+    }
+
+    #[CheckFile]
+    public function check00RemoveFiles(FileInfo $i): void {
+        if (in_array($fi->filename, self::FILES_TO_REMOVE)) {
+            unlink($fi->path);
+            $fi->info('SystemFile', 'File removed');
+            throw new LastCheckException();
         }
     }
 
