@@ -146,14 +146,15 @@ class FileChecker {
             $skip = $this->getLinesCount($continue) - 1;
         }
 
-        $fh       = fopen($droidOutput, 'rb');
-        $header   = fgetcsv($fh);
-        $dirs     = [];
-        $hashes   = [];
-        $stdNames = [];
+        $fh             = fopen($droidOutput, 'rb');
+        $header         = fgetcsv($fh);
+        $formatCountPos = array_search('FORMAT_COUNT', $header);
+        $dirs           = [];
+        $hashes         = [];
+        $stdNames       = [];
         while (!feof($fh)) {
             $line = fgetcsv($fh);
-            if (is_array($line) && count($line) >= count($header)) {
+            if (is_array($line) && count($line) > $formatCountPos) {
                 $fileInfo = FileInfo::fromDroid($line, $header);
 
                 if (!empty($fileInfo->droidParentId)) {

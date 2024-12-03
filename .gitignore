@@ -6,3 +6,5 @@
 /aux/verapdf
 /aux/droid
 /.phpunit.cache
+/derby.log
+/build
