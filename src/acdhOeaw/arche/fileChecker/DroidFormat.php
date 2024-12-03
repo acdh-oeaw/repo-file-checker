@@ -3,7 +3,7 @@
 /*
  * The MIT License
  *
- * Copyright 2023 zozlak.
+ * Copyright 2024 zozlak.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,31 @@
  * THE SOFTWARE.
  */
 
-namespace acdhOeaw\arche\fileChecker\attributes;
-
-use Attribute;
+namespace acdhOeaw\arche\fileChecker;
 
 /**
- * Description of CheckDir
+ * Description of DroidFormat
  *
  * @author zozlak
  */
-#[Attribute]
-class CheckDir {
-    //put your code here
+class DroidFormat {
+
+    /**
+     * 
+     * @param array<string, string> $format
+     * @return self
+     */
+    static public function fromDroid(array $format): self {
+        $df          = new self();
+        $df->puid    = $format['PUID'];
+        $df->mime    = $format['MIME_TYPE'];
+        $df->name    = $format['FORMAT_NAME'];
+        $df->version = $format['FORMAT_VERSION'];
+        return $df;
+    }
+
+    public string $puid;
+    public string $mime;
+    public string $name;
+    public string $version;
 }

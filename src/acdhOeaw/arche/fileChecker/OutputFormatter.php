@@ -54,7 +54,7 @@ class OutputFormatter {
             throw new FileCheckerException('continuing is possible only for JSON lines and CSV formats');
         }
 
-        $this->fh     = fopen($filename, $continue ? 'a' : 'w') ?: FileChecker::die("Failed to open $filename for writing");
+        $this->fh     = fopen($filename, $continue ? 'a' : 'w') ?: throw new \RuntimeException("Failed to open $filename for writing");
         $this->format = $format;
 
         if ($format === self::FORMAT_JSON) {
@@ -69,12 +69,14 @@ class OutputFormatter {
             self::FORMAT_JSONLINES => json_encode($data, self::JSON_FLAGS) . "\n",
             self::FORMAT_JSON => ($this->first ? '' : ",\n") . json_encode($data, self::JSON_FLAGS),
             self::FORMAT_CSV => implode(self::CSV_SEPARATOR, array_map(fn($x) => is_bool($x) ? ($x ? 'yes' : 'no') : (is_string($x) ? self::CSV_ESCAPE . str_replace(self::CSV_ESCAPE, self::CSV_ESCAPE . self::CSV_ESCAPE, $x) . self::CSV_ESCAPE : $x), $data)) . "\n",
+            default => throw new \RuntimeException('worng output format'),
         };
         fwrite($this->fh, $data);
         $this->first = false;
     }
 
     public function __destruct() {
+        /** @phpstan-ignore isset.property */
         if (isset($this->fh)) {
             $this->close();
         }

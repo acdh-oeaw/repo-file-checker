@@ -45,12 +45,6 @@ class CheckFunctions {
 
     /**
      * 
-     * @var array<string, array<string>>
-     */
-    private array $extToMime = [];
-
-    /**
-     * 
      * @var array<string, string>
      */
     private array $archeFormatsByExtension = [];
@@ -138,7 +132,7 @@ class CheckFunctions {
     }
 
     #[CheckFile]
-    public function check00RemoveFiles(FileInfo $i): void {
+    public function check00RemoveFiles(FileInfo $fi): void {
         if (in_array($fi->filename, self::FILES_TO_REMOVE)) {
             unlink($fi->path);
             $fi->info('SystemFile', 'File removed');
@@ -233,14 +227,14 @@ class CheckFunctions {
      */
     #[CheckFile]
     public function check04MimeMeetsExtension(FileInfo $fi): void {
-        if ($fi->droidFormatCount === 0) {
+        if (count($fi->droidFormats) === 0) {
             if ($fi->extension === 'xml') {
                 $this->check10Xml($fi, true);
             } else {
                 $fi->error('Unknown MIME', 'Content type not recognized by the DROID');
             }
             throw new LastCheckException();
-        } elseif ($fi->droidFormatCount > 1) {
+        } elseif (count($fi->droidFormats) > 1) {
             $fi->error('Unknown MIME', 'Multiple content types recognized by the DROID');
             throw new LastCheckException();
         }
@@ -309,14 +303,14 @@ class CheckFunctions {
                         if (!str_starts_with(strtolower($href), 'http')) {
                             $href = $fi->directory . '/' . $href;
                             if (!file_exists($href)) {
-                                $fi->error('XML', "Failed to read schema from $href", true);
+                                $fi->error('XML', "Failed to read schema from $href");
                                 continue;
                                 ;
                             }
                         }
                         $schema = @file_get_contents($href);
                         if ($schema === false) {
-                            $fi->error('XML', "Failed to read schema from $href", true);
+                            $fi->error('XML', "Failed to read schema from $href");
                             continue;
                         }
                         $res = $xml->$fn($schema);
@@ -340,9 +334,6 @@ class CheckFunctions {
     /**
      * 
      * Check the PDF version and try to open to be sure that is doesnt have any pwd
-     * 
-     * @param string $file
-     * @return Error|null
      */
     #[CheckFile]
     public function check11PdfFile(FileInfo $fi): void {
@@ -440,14 +431,12 @@ class CheckFunctions {
 
     /**
      * Checks the bagit file, and if there is an error then add it to the errors variable
-     * 
-     * @param string $filename
-     * @return array<Error>
      */
     #[CheckFile]
     #[CheckDir]
     public function check80BagitFile(FileInfo $fi): void {
         $isBagIt = false;
+        $root    = '';
         if ($fi->type === FileInfo::DROID_TYPEDIR) {
             if (file_exists($fi->path . '/bagit.txt')) {
                 $isBagIt = preg_match(self::BAGIT_REGEX, file_get_contents($fi->path . '/bagit.txt', false, null, 0, 1000)) === 1;
@@ -524,6 +513,7 @@ class CheckFunctions {
             ZipArchive::ER_READ => 'Read error',
             ZipArchive::ER_SEEK => 'Seek error',
             false => $za->getStatusString(),
+            default => 'Other error',
         };
     }
 }

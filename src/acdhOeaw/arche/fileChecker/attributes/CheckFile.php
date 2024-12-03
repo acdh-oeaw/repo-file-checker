@@ -26,6 +26,8 @@
 
 namespace acdhOeaw\arche\fileChecker\attributes;
 
+use Attribute;
+
 /**
  * Description of CheckFile
  *

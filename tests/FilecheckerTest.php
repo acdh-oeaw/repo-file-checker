@@ -129,6 +129,10 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
         $this->assertEquals($expected, $actual);
     }
 
+    /**
+     * 
+     * @return array<array<string, mixed>>
+     */
     private function readCsv(string $path, bool $shorten = true): array {
         $castBool = function ($x) {
             return match ($x) {'no' => false, 'yes' => true, default => $x
@@ -158,9 +162,8 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
      * items always describe same test files.
      * This makes the assertEquals() results much easier to read in case of a mismatch.
      * 
-     * @param array $expected
-     * @param array $actual
-     * @return void
+     * @param array<array<string, mixed>> $expected
+     * @param array<array<string, mixed>> $actual
      */
     private function normalizeErrorLists(array &$expected, array &$actual): void {
         $actual = $this->normalizeDirectory($actual);
@@ -196,6 +199,11 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
         $this->sort($expected, ['errorType', 'errorMessage']);
     }
 
+    /**
+     * 
+     * @param array<array<string, mixed>> $data
+     * @param array<string> $otherCols
+     */
     private function sort(array &$data, array $otherCols = []): void {
         $sortFn = function ($a, $b) use ($otherCols): int {
             $av = $a['directory'] . '/' . $a['filename'];
@@ -209,6 +217,11 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
         usort($data, $sortFn);
     }
 
+    /**
+     * 
+     * @param array<array<string, mixed>> $data
+     * @return array<array<string, mixed>>
+     */
     private function normalizeDirectory(array $data,
                                         string $column = 'directory'): array {
         $n         = strlen(__DIR__ . '/data/');

@@ -43,21 +43,13 @@ class FileChecker {
 
     private string $tmpDir;
     private string $reportDir;
-    private string $tmplDir;
     private string $checkDir;
-    private string $matchRegex;
     private CheckFunctions $chkFunc;
     private bool $noErrors;
     private bool $skipWarnings;
     private OutputFormatter $checkOutput;
     private string $hashAlgo;
     private PB $progressBar;
-
-    /**
-     * 
-     * @var array<string, mixed>
-     */
-    private array $cfg;
 
     /**
      * 
@@ -77,15 +69,11 @@ class FileChecker {
      */
     public function __construct(array $config) {
         if (!str_ends_with(str_replace('-', '', strtolower($_SERVER['LC_ALL'] ?? $_SERVER['LANG'] ?? '')), 'utf8')) {
-            echo "\nERROR: non-UTF8 locale\n";
-            return false;
+            throw new \RuntimeException("\nERROR: non-UTF8 locale\n");
         }
 
         $config['tmpDir']   .= '/filechecker' . rand();
         $this->chkFunc      = new CheckFunctions($config);
-        $this->cfg          = $config;
-        $this->tmplDir      = realpath(__DIR__ . '/../../../../template');
-        $this->matchRegex   = isset($config['match']) ? "`" . $config['match'] . "`" : '';
         $this->skipWarnings = (bool) ($config['skipWarnings'] ?? false);
 
         $this->tmpDir    = $config['tmpDir'];
@@ -100,7 +88,7 @@ class FileChecker {
 
         $this->hashAlgo = $config['hashAlgo'] ?? self::HASH_DEFAULT;
         if (!in_array($this->hashAlgo, hash_algos())) {
-            echo "Hashing algorithm $hash->algo unavailable, falling back to " . self::HASH_FALLBACK . "\n\n";
+            echo "Hashing algorithm $this->hashAlgo unavailable, falling back to " . self::HASH_FALLBACK . "\n\n";
             $this->hashAlgo = self::HASH_FALLBACK;
         }
 
@@ -134,7 +122,7 @@ class FileChecker {
         $outputPath        = "$this->reportDir/fileInfo.jsonl";
         $this->checkOutput = new OutputFormatter($outputPath, OutputFormatter::FORMAT_JSONLINES, null, $continue);
 
-        if ($this->checkDir === '') {
+        if ($this->checkDir === false) {
             echo "\nERROR: Directory '$dir' does not exist\n";
             return false;
         }
@@ -165,11 +153,8 @@ class FileChecker {
         $stdNames = [];
         while (!feof($fh)) {
             $line = fgetcsv($fh);
-            if (is_array($line) && count($line) < count($header)) {
-                $line = array_pad($line, count($header), '');
-            }
-            if (is_array($line) && count($line) === count($header)) {
-                $fileInfo = FileInfo::fromDroid(array_combine($header, $line));
+            if (is_array($line) && count($line) >= count($header)) {
+                $fileInfo = FileInfo::fromDroid($line, $header);
 
                 if (!empty($fileInfo->droidParentId)) {
                     $dirs[$fileInfo->droidParentId]->filesCount++;
@@ -303,7 +288,11 @@ class FileChecker {
         }
     }
 
-    private function copyFileContent($from, $to): void {
+    /**
+     * 
+     * @param resource $to
+     */
+    private function copyFileContent(string $from, $to): void {
         $from = fopen($from, 'r') ?: throw new FileCheckerException("Can't open $from for reading");
         while (!feof($from)) {
             fwrite($to, fread($from, 1048576));
@@ -381,6 +370,10 @@ class FileChecker {
         return $droidOutput;
     }
 
+    /**
+     * 
+     * @param array<callable> $checks
+     */
     private function runChecks(FileInfo $fileInfo, array $checks): void {
         try {
             foreach ($checks as $check) {

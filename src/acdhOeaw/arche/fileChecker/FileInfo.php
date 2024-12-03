@@ -48,15 +48,34 @@ class FileInfo {
     const SPECIAL_BAGIT   = 'bagit';
     const SPECIAL_XSD     = 'xsd';
 
-    static private $outputColumns     = [
+    /**
+     * 
+     * @var array<string, array<string>>
+     */
+    static private array $outputColumns = [
         self::OUTPUT_FILELIST => ['directory', 'filename', 'type', 'size', 'lastModified',
             'extension', 'mime', 'specialType', 'valid', 'hasCategory'],
         self::OUTPUT_DIRLIST  => ['path', 'lastModified', 'valid'],
         self::OUTPUT_ERROR    => ['directory', 'filename', 'severity', 'errorType',
             'errorMessage'],
     ];
-    static private array $hasCategoryByExt  = [];
+
+    /**
+     * 
+     * @var array<string, array<string>>
+     */
+    static private array $hasCategoryByExt = [];
+
+    /**
+     * 
+     * @var array<string, array<string>>
+     */
     static private array $hasCategoryByMime = [];
+
+    /**
+     * 
+     * @var array<string, array<string>>
+     */
     static private array $hasCategoryByPuid = [];
 
     static public function fromJson(string $json): self {
@@ -72,6 +91,7 @@ class FileInfo {
             $dir  = \Composer\InstalledVersions::getInstallPath('acdh-oeaw/arche-assets');
             $data = json_decode(file_get_contents($dir . '/AcdhArcheAssets/formats.json'));
             $data = array_filter($data, fn($x) => !empty($x->ARCHE_category));
+            /** @var \stdClass $fd */
             foreach ($data as $fd) {
                 foreach ($fd->extensions as $i) {
                     self::$hasCategoryByExt[$i][] = $fd->ARCHE_category;
@@ -91,28 +111,44 @@ class FileInfo {
         }
     }
 
-    static public function fromDroid(array $data) {
-        $fi                   = new FileInfo();
-        $fi->path             = $data['FILE_PATH'];
-        $fi->directory        = dirname($fi->path);
-        $fi->filename         = basename($fi->path);
-        $fi->type             = is_link($fi->path) ? self::DROID_TYPELINK : $data['TYPE'];
-        $fi->size             = (int) $data['SIZE'];
-        $fi->lastModified     = $data['LAST_MODIFIED'];
-        $fi->extension        = $data['EXT'];
-        $fi->mime             = preg_replace('/,.*/', '', $data['MIME_TYPE']);
-        $fi->filesCount       = 0;
-        $fi->droidId          = (int) $data['ID'];
-        $fi->droidParentId    = (int) $data['PARENT_ID'];
+    /**
+     * 
+     * @param array<string> $line
+     * @param array<string> $header
+     */
+    static public function fromDroid(array $line, array $header): self {
+        $countPos          = array_search('FORMAT_COUNT', $header);
+        $formatHeader      = array_slice($header, $countPos + 1);
+        $data              = array_combine(array_slice($header, 0, $countPos + 1), array_slice($line, 0, $countPos + 1));
+        $fi                = new FileInfo();
+        $fi->path          = $data['FILE_PATH'];
+        $fi->directory     = dirname($fi->path);
+        $fi->filename      = basename($fi->path);
+        $fi->type          = is_link($fi->path) ? self::DROID_TYPELINK : $data['TYPE'];
+        $fi->size          = (int) $data['SIZE'];
+        $fi->lastModified  = $data['LAST_MODIFIED'];
+        $fi->extension     = $data['EXT'];
+        $fi->filesCount    = 0;
+        $fi->droidId       = (int) $data['ID'];
+        $fi->droidParentId = (int) $data['PARENT_ID'];
+        $fi->mime          = '';
+        for ($i = 0; $i < $data['FORMAT_COUNT']; $i++) {
+            $formatData         = array_slice($line, $countPos + 1 + $i * count($formatHeader), count($formatHeader));
+            $df                 = DroidFormat::fromDroid(array_combine($formatHeader, $formatData));
+            $fi->droidFormats[] = $df;
+            if (!empty($df->mime)) {
+                $fi->mime = preg_replace('/,.*/', '', $df->mime);
+            }
+        }
         $fi->droidExtMismatch = $data['EXTENSION_MISMATCH'] === 'true';
-        $fi->droidFormatCount = (int) $data['FORMAT_COUNT'];
-        $fi->droidPuid        = $data['PUID'];
         $fi->valid            = true;
 
-        switch ($data['PUID']) {
-            case 'x-fmt/280':
-                $fi->specialType = self::SPECIAL_XSD;
-                break;
+        foreach ($fi->droidFormats as $i) {
+            switch ($i->puid) {
+                case 'x-fmt/280':
+                    $fi->specialType = self::SPECIAL_XSD;
+                    break;
+            }
         }
 
         return $fi;
@@ -120,7 +156,7 @@ class FileInfo {
 
     static public function getCsvHeader(string $format): string {
         if (!isset(self::$outputColumns[$format])) {
-            FileChecker::die("Unknown output format $format");
+            throw new \RuntimeException("Unknown output format $format");
         }
         return implode(OutputFormatter::CSV_SEPARATOR, self::$outputColumns[$format]) . "\n";
     }
@@ -138,8 +174,13 @@ class FileInfo {
     public string $hasCategory;
     public int $droidId;
     public int $droidParentId;
+
+    /**
+     * 
+     * @var array<DroidFormat>
+     */
+    public array $droidFormats  = [];
     public bool $droidExtMismatch;
-    public int $droidFormatCount;
     public string $droidPuid;
     public ?string $specialType = null;
 
@@ -181,8 +222,7 @@ class FileInfo {
 
         $matches = null;
         if (isset(self::$hasCategoryByExt[$this->extension ?? -1])) {
-            $tmp     = self::$hasCategoryByExt[$this->extension];
-            $matches = $matches === null ? $tmp : array_intersect($matches, $tmp);
+            $matches = self::$hasCategoryByExt[$this->extension];
         }
         if (isset(self::$hasCategoryByMime[$this->mime ?? -1])) {
             $tmp     = self::$hasCategoryByMime[$this->mime];
