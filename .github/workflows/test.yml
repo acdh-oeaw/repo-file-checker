@@ -10,9 +10,21 @@ jobs:
     - uses: actions/checkout@v4
     - name: composer
       run: composer update
+    #- uses: mxschmitt/action-tmate@v3
     - name: phpstan
       run:
         vendor/bin/phpstan analyze -l 6 src bin/arche-filechecker tests
+    #- name: unit tests
+    #  run: |
+    #- name: coveralls
+    #  run: |
+    #    export COVERALLS_RUN_LOCALLY=1
+    #    export COVERALLS_REPO_TOKEN=${{ secrets.coverallsToken }}
+    #    rm -fR composer.json composer.lock vendor
+    #    composer require php-coveralls/php-coveralls
+    #    php vendor/bin/php-coveralls -v
+    # current phpunit tests are still only integration ones - the filechecker is called using its CLI interface
+    # and the output is checked so the coverage computed by the phpunit is 0
     - name: integration tests
       run: |
         mkdir -p build/logs
@@ -20,12 +32,4 @@ jobs:
         RET=1
         docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/bin/arche-filechecker acdhch/arche-ingest /mnt/tests/data/ /mnt/tests/reports/ || RET=0
         exit $RET
-    - uses: mxschmitt/action-tmate@v3
-    - name: coveralls
-      run: |
-        export COVERALLS_RUN_LOCALLY=1
-        export COVERALLS_REPO_TOKEN=${{ secrets.coverallsToken }}
-        rm -fR composer.json composer.lock vendor
-        composer require php-coveralls/php-coveralls
-        php vendor/bin/php-coveralls -v
 
