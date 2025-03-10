@@ -1,7 +1,7 @@
 directory;filename;type;size;extension;mime;specialType;valid;hasCategory
+bagit;BadBag.tgz;File;84487;tgz;application/gzip;bagit;no;
 bagit;bag.tar;File;10240;tar;application/x-tar;bagit;yes;
 bagit;testbag.zip;File;1904;zip;application/zip;bagit;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/collection
-bagit;BadBag.tgz;File;84487;tgz;application/gzip;bagit;no;
 bagit/anotherBag;bagit.txt;File;55;txt;text/plain;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 bagit/anotherBag;manifest-sha1.txt;File;58;txt;text/plain;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 bagit/anotherBag;tagmanifest-sha1.txt;File;164;txt;text/plain;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/text
@@ -35,7 +35,7 @@ notAcceptedFormat;swf_standard_testfile.swf;File;31662;swf;application/x-shockwa
 notPreferredFormat;image.gif;File;632;gif;image/gif;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/audioVisual
 notPreferredFormat;image.png;File;1320;png;image/png;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 notPreferredFormat;issue22.json;File;488364;json;application/json;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
-notPreferredFormat;shiporder.xml;File;558;xml;application/xml;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
+notPreferredFormat;shiporder.xml;File;558;xml;application/xml;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
 notPreferredFormat;text.rtf;File;2431;rtf;application/rtf;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 passwordProtected;pswd_docx.docx;File;17920;docx;;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 passwordProtected;pswd_ods.ods;File;11923;ods;application/zip;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
@@ -48,14 +48,14 @@ wrongContent;broken_docx.docx;File;4096;docx;multipart/appledouble;;no;https://v
 wrongContent;broken_pdf.pdf;File;23872;pdf;;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 wrongContent;broken_tif.tif;File;1394;tif;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 wrongContent;byte_order_mark.txt;File;12;txt;text/plain;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/text
-wrongContent;image.jpg;File;1796;jpg;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 wrongContent;image_bad_compression.tif;File;5198;tif;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 wrongContent;image_no_compression.tif;File;5590;tif;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 wrongContent;image_no_geotransform.tif;File;1322;tif;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 wrongContent;image_no_projection.tif;File;1338;tif;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
-wrongContent;rotated.jpg;File;1032;jpg;image/jpeg;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
+wrongContent;image.jpg;File;1796;jpg;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 wrongContent;no_schema_location.xml;File;569;xml;application/xml;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
 wrongContent;no_xml_declaration.xml;File;1552;xml;;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
+wrongContent;rotated.jpg;File;1032;jpg;image/jpeg;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 wrongFilename;.hidden.txt;File;7;txt;text/plain;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 wrongFilename;contains space.txt;File;15;txt;text/plain;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 wrongFilename;non_ascii_żü.txt;File;10;txt;text/plain;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/text

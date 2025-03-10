@@ -98,7 +98,7 @@ class CheckFunctions {
                 $this->archeFormatsByExtension[$j] = min($i->ARCHE_conformance, $this->archeFormatsByExtension[$j] ?? 'preferred');
             }
             foreach ($i->MIME_type as $j) {
-                $this->archeFormatsByMime[$j] = min($i->ARCHE_conformance, $this->archeFormatsByMime[$j] ?? 'preferred');
+                $this->archeFormatsByMime[$j] = max($i->ARCHE_conformance, $this->archeFormatsByMime[$j] ?? '');
             }
         }
 
