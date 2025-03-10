@@ -17,7 +17,7 @@ good;data.tsv;File;39;tsv;text/tab-separated-values;;yes;https://vocabs.acdh.oea
 good;data.xlsx;File;4860;xlsx;application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
 good;html.html;File;1488;html;application/xhtml+xml;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 good;image.jpg;File;1255;jpg;image/jpeg;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/image
-good;image.tif;File;1538;tif;image/tiff;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/image
+good;image.tif;File;934;tif;image/tiff;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 good;shiporder.xsd;File;1492;xsd;application/xml;xsd;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 good;sylk.csv;File;22;csv;text/csv;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
 good;tei.xml;File;10134;xml;application/tei+xml;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
@@ -49,6 +49,10 @@ wrongContent;broken_pdf.pdf;File;23872;pdf;;;no;https://vocabs.acdh.oeaw.ac.at/a
 wrongContent;broken_tif.tif;File;1394;tif;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 wrongContent;byte_order_mark.txt;File;12;txt;text/plain;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 wrongContent;image.jpg;File;1796;jpg;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
+wrongContent;image_bad_compression.tif;File;5198;tif;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
+wrongContent;image_no_compression.tif;File;5590;tif;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
+wrongContent;image_no_geotransform.tif;File;1322;tif;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
+wrongContent;image_no_projection.tif;File;1338;tif;image/tiff;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 wrongContent;rotated.jpg;File;1032;jpg;image/jpeg;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 wrongContent;no_schema_location.xml;File;569;xml;application/xml;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
 wrongContent;no_xml_declaration.xml;File;1552;xml;;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset

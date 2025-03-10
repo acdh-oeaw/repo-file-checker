@@ -6,6 +6,7 @@ notPreferredFormat;image.png;WARNING;Format not preferred;MIME image/png: accept
 notPreferredFormat;issue22.json;WARNING;Format not preferred;MIME application/json: accepted, extension json: accepted
 notPreferredFormat;text.rtf;WARNING;Format not preferred;MIME application/rtf: accepted, extension rtf: accepted
 notPreferredFormat;shiporder.xml;WARNING;Format not preferred;MIME application/xml: accepted, extension xml: preferred
+wrongContent;image_bad_compression.tif;WARNING;Compression other than LZW;
 wrongContent;rotated.jpg;WARNING;Rotated image;The EXIF metadata indicate the image is rotated
 wrongContent;no_schema_location.xml;WARNING;XML;Schema not defined
 wrongContent;no_xml_declaration.xml;WARNING;XML;Schema not defined

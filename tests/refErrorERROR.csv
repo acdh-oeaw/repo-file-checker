@@ -30,6 +30,9 @@ wrongContent;broken_pdf.pdf;ERROR;Unknown MIME;Content type not recognized by th
 wrongContent;broken_tif.tif;ERROR;Corrupted image;
 wrongContent;byte_order_mark.txt;ERROR;File contains Byte Order Mark;
 wrongContent;image.jpg;ERROR;MIME/extension mismatch;Extension: jpg, MIME type: image/tiff
+wrongContent;image_no_compression.tif;ERROR;Uncompressed TIFF;
+wrongContent;image_no_geotransform.tif;ERROR;Geo data;Image has projection data but lacks transformation data
+wrongContent;image_no_projection.tif;ERROR;Geo data;Image has geo transformation data but lacks projection data
 wrongContent;no_xml_declaration.xml;ERROR;XML;Missing XML declaration
 wrongContent;symlink.jpg;ERROR;Wrong file type;File type: Symlink
 wrongFilename;.hidden.txt;ERROR;Invalid filename;

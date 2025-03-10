@@ -62,6 +62,7 @@ class CheckFunctions {
     private array $bom           = [];
     private string $tmpDir;
     private string $gdalCalcPath = '/usr/bin/gdal_calc.py';
+    private string $gdalinfoPath = '/usr/bin/gdalinfo';
 
     /**
      * 
@@ -75,6 +76,13 @@ class CheckFunctions {
         if (!file_exists($this->gdalCalcPath)) {
             $this->gdalCalcPath = '';
             echo "WARNING: gdal_calc.py not found, images won't be checked for corruption\n";
+        }
+        if (isset($cfg['gdalinfoPath'])) {
+            $this->gdalinfoPath = $cfg['gdalinfoPath'];
+        }
+        if (!file_exists($this->gdalinfoPath)) {
+            $this->gdalinfoPath = '';
+            echo "WARNING: gdalinfo not found, images won't be checked for compression and projection\n";
         }
         if (!file_exists(self::DROID_PATH) || !file_exists(self::VERAPDF_PATH) || count(scandir(self::SIGNATURES_DIR)) < 3) {
             exec(__DIR__ . '/../../../../aux/install_deps.sh 2>&1', $output, $ret);
@@ -401,34 +409,59 @@ class CheckFunctions {
     public function check13RasterImage(FileInfo $fi): void {
         static $imgMime = ['image/tiff', 'image/png', 'image/jpeg', 'image/gif',
             'image/webp'];
-        if (empty($this->gdalCalcPath) || !in_array($fi->mime, $imgMime)) {
+        if (!in_array($fi->mime, $imgMime)) {
             return;
         }
         $tmpfile = escapeshellarg("$this->tmpDir/tmp.tif");
-        $cmd     = sprintf(
-            "%s --overwrite --quiet -A %s --calc A --outfile %s --co COMPRESS=LZW 2>&1",
-            escapeshellcmd($this->gdalCalcPath),
-            escapeshellarg($fi->path),
-            $tmpfile
-        );
-        $output  = [];
-        $retCode = null;
-        exec($cmd, $output, $retCode);
-        if ($retCode !== 0) {
-            // not reliable due to different reporting on different gdal and python versions
-            //$msg = implode("\n", array_filter($output, fn($x) => str_starts_with($x, 'ERROR')));
-            $fi->error("Corrupted image", '');
-        }
-        if (file_exists($tmpfile)) {
-            unlink($tmpfile);
+
+        if (!empty($this->gdalCalcPath)) {
+            $cmd     = sprintf(
+                "%s --overwrite --quiet -A %s --calc A --outfile %s --co COMPRESS=LZW 2>&1",
+                escapeshellcmd($this->gdalCalcPath),
+                escapeshellarg($fi->path),
+                $tmpfile
+            );
+            $output  = [];
+            $retCode = null;
+            exec($cmd, $output, $retCode);
+            if (file_exists($tmpfile)) {
+                unlink($tmpfile);
+            }
+            if ($retCode !== 0) {
+                // not reliable due to different reporting on different gdal and python versions
+                //$msg = implode("\n", array_filter($output, fn($x) => str_starts_with($x, 'ERROR')));
+                $fi->error("Corrupted image", '');
+                // do not perform furhter checks if an image is corruptued
+                return;
+            }
         }
 
+        if (!empty($this->gdalinfoPath)) {
+            $cmd    = $this->gdalinfoPath . ' ' . escapeshellarg($fi->path);
+            $output = [];
+            exec($cmd, $output, $retCode);
+            if ($retCode === 0) {
+                $output = implode("\n", $output);
+                if ($fi->mime === 'image/tiff' && !preg_match('/COMPRESSION=/', $output)) {
+                    $fi->error('Uncompressed TIFF', '');
+                } elseif ($fi->mime === 'image/tiff' && !preg_match('/COMPRESSION=LZW/', $output)) {
+                    $fi->warning('Compression other than LZW', '');
+                }
+
+                $geoTransform  = (int) preg_match('/Origin =/', $output);
+                $geoProjection = (int) preg_match('/Coordinate System/', $output);
+                if ($geoTransform + $geoProjection === 1) {
+                    $fi->error("Geo data", $geoTransform === 1 ? 'Image has geo transformation data but lacks projection data' : 'Image has projection data but lacks transformation data');
+                }
+            }
+        }
+        
         $exif = @exif_read_data($fi->path, 'ifd0');
         if (is_array($exif) && ($exif['Orientation'] ?? 1) !== 1) {
             $fi->warning('Rotated image', 'The EXIF metadata indicate the image is rotated');
         }
     }
-
+    
     /**
      * Checks the bagit file, and if there is an error then add it to the errors variable
      */
