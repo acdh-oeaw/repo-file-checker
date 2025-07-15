@@ -29,11 +29,11 @@ good;text.txt;File;8;txt;text/plain;;yes;https://vocabs.acdh.oeaw.ac.at/archecat
 notAcceptedFormat;airboat.obj;File;308163;obj;;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/3dData
 notAcceptedFormat;geojson.geojson;File;741;geojson;application/geo+json;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
 notAcceptedFormat;image.avif;File;634;avif;;;no;
-notAcceptedFormat;image.webp;File;244;webp;image/webp;;no;
 notAcceptedFormat;not_PDF_A.pdf;File;14162;pdf;application/pdf;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/text
 notAcceptedFormat;swf_standard_testfile.swf;File;31662;swf;application/x-shockwave-flash;;no;
 notPreferredFormat;image.gif;File;632;gif;image/gif;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/audioVisual
 notPreferredFormat;image.png;File;1320;png;image/png;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
+notPreferredFormat;image.webp;File;244;webp;image/webp;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/image
 notPreferredFormat;issue22.json;File;488364;json;application/json;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
 notPreferredFormat;shiporder.xml;File;558;xml;application/xml;;yes;https://vocabs.acdh.oeaw.ac.at/archecategory/dataset
 notPreferredFormat;text.rtf;File;2431;rtf;application/rtf;;no;https://vocabs.acdh.oeaw.ac.at/archecategory/text

@@ -10,13 +10,12 @@ duplicates;content_duplicate1.txt;ERROR;Duplicated file;Same hash as duplicates/
 duplicates;name_duplicate.txt;ERROR;Duplicated file;File names duplication with name_Duplicate.txt on a case-insensititve filesystems
 notAcceptedFormat;airboat.obj;ERROR;Unknown MIME;Content type not recognized by the DROID
 notAcceptedFormat;image.avif;ERROR;Unknown MIME;Content type not recognized by the DROID
-notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;PDF/A rule 6.7.2 violated: The document catalog dictionary of a conforming file shall contain the Metadata key
+notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;PDF/A rule 6.7.2 violated: The document catalog dictionary of a conforming file shall contain the Metadata key. The metadata stream dictionary shall contain entry Type with value /Metadata and entry Subtype with value /XML
 notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;"PDF/A rule 6.7.3 violated: The value of Author entry from the document information dictionary, if present, and its analogous XMP property ""dc:creator"" shall be equivalent. dc:creator shall contain exactly one entry"
 notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;PDF/A rule 6.2.3.3 violated: DeviceRGB may be used only if the file has a PDF/A-1 OutputIntent that uses an RGB colour space
 notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;"PDF/A rule 6.7.3 violated: The value of Creator entry from the document information dictionary, if present, and its analogous XMP property ""xmp:CreatorTool"" shall be equivalent"
 notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;"PDF/A rule 6.7.3 violated: The value of Producer entry from the document information dictionary, if present, and its analogous XMP property ""pdf:Producer"" shall be equivalent"
 notAcceptedFormat;geojson.geojson;ERROR;Format not accepted;MIME application/geo+json: not accepted, extension geojson: not accepted
-notAcceptedFormat;image.webp;ERROR;Format not accepted;MIME image/webp: not accepted, extension webp: not accepted
 notAcceptedFormat;swf_standard_testfile.swf;ERROR;Format not accepted;MIME application/x-shockwave-flash: not accepted, extension swf: not accepted
 passwordProtected;pswd_docx.docx;ERROR;Password protected file;Or not a docx file at all
 passwordProtected;pswd_ods.ods;ERROR;Password protected file;

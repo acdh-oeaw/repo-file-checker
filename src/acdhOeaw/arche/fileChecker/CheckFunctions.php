@@ -360,6 +360,9 @@ class CheckFunctions {
         $result  = $result?->report?->jobs;
         if (isset($result[0]->validationResult)) {
             $result = $result[0]->validationResult;
+            if (is_array($result)) {
+                $result = $result[0];
+            }
             if ($result->compliant ?? false) {
                 //$fi->info("PDF", "Compliant with the " . $result->profileName);
             } else {
@@ -455,13 +458,13 @@ class CheckFunctions {
                 }
             }
         }
-        
+
         $exif = @exif_read_data($fi->path, 'ifd0');
         if (is_array($exif) && ($exif['Orientation'] ?? 1) !== 1) {
             $fi->warning('Rotated image', 'The EXIF metadata indicate the image is rotated');
         }
     }
-    
+
     /**
      * Checks the bagit file, and if there is an error then add it to the errors variable
      */
