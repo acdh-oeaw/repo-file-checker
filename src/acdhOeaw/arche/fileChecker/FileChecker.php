@@ -170,7 +170,7 @@ class FileChecker {
                         continue;
                     }
                     if (!file_exists($fileInfo->path)) {
-                        $fileInfo->error('Removed', "File removed during the filechecker run");
+                        $fileInfo->error(FileInfo::ERR_REMOVED, "File removed during the filechecker run");
                     }
                     $this->runChecks($fileInfo, $this->checksFile);
 

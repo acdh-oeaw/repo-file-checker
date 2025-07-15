@@ -47,6 +47,12 @@ class FileInfo {
     const OUTPUT_DIRLIST  = 'dirList';
     const SPECIAL_BAGIT   = 'bagit';
     const SPECIAL_XSD     = 'xsd';
+    const ERR_REMOVED     = 'Removed';
+    const ERR_SYSTEM_FILE = 'SystemFile';
+    const FILE_LIST_SKIP  = [
+        self::ERR_REMOVED,
+        self::ERR_SYSTEM_FILE,
+    ];
 
     /**
      * 
@@ -242,6 +248,10 @@ class FileInfo {
         // just dump object as it is
         if ($format === null) {
             $handle->write($this);
+            return;
+        } elseif ($format === FileInfo::OUTPUT_FILELIST && count(array_filter($this->errors, fn($x) => in_array($x['errorType'], self::FILE_LIST_SKIP))) > 0) {
+            // don't include removed files in the file list output 
+            // (https://github.com/acdh-oeaw/arche-metadata-crawler/issues/14)
             return;
         }
 
