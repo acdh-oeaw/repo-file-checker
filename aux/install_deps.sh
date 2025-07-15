@@ -18,7 +18,7 @@ fi
 if [ ! -d "$CDIR/droid" ] ; then
     URL=`curl -s 'https://www.nationalarchives.gov.uk/information-management/manage-information/preserving-digital-records/droid/' | grep 'droid-binary.*all platforms' | head -n 1 | sed -E 's/.*href="([^"]+)".*/\1/'`
     if [ "$URL" == "" ] ; then
-        URL="https://tna-cdn-live-uk.s3.eu-west-2.amazonaws.com/documents/droid-binary-6.7.0-bin.zip"
+        URL="https://tna-cdn-live-uk.s3.eu-west-2.amazonaws.com/documents/droid-binary-6.8.1-bin.zip"
     fi
 
     echo "### Installing DROID from $URL"
