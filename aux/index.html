@@ -195,6 +195,9 @@
                 jQuery('#errorsPill').click(function () {
                     initTable(errorList);
                 });
+                jQuery('#infosPill').click(function () {
+                    initTable(infoList);
+                });
                 jQuery('#dirsTablePill').click(function () {
                     initTable(directoryList);
                 });
@@ -228,7 +231,8 @@
             <div class="row">
                 <div class="col-xl-2 col-lg-3">
                     <div class="nav flex-column nav-pills" id="navbar" role="tablist" aria-orientation="vertical">
-                        <button type="button" class="nav-link active" id="errorsPill" data-toggle="pill">Errors</button>
+                        <button type="button" class="nav-link active" id="errorsPill" data-toggle="pill">Issues</button>
+                        <button type="button" class="nav-link" id="infosPill" data-toggle="pill">Infos</button>
                         <button type="button" class="nav-link" id="dirsTablePill" data-toggle="pill">Directories (table)</button>
                         <button type="button" class="nav-link" id="dirsTreePill" data-toggle="pill">Directories (tree)</button>
                         <button type="button" class="nav-link" id="filesPill" data-toggle="pill">Files (table)</button>

@@ -268,7 +268,11 @@ class FileChecker {
             fwrite($fh, ";\n");
 
             fwrite($fh, "var errorList = ");
-            $this->copyFileContent("$this->reportDir/error.json", $fh);
+            $this->copyJsonContent("$this->reportDir/error.json", $fh, fn($x) => $x->severity !== "INFO");
+            fwrite($fh, ";\n");
+
+            fwrite($fh, "var infoList = ");
+            $this->copyJsonContent("$this->reportDir/error.json", $fh, fn($x) => $x->severity === "INFO");
             fwrite($fh, ";\n");
 
             $dict = [
@@ -299,6 +303,21 @@ class FileChecker {
             fwrite($to, fread($from, 1048576));
         }
         fclose($from);
+    }
+
+    /**
+     * 
+     * @param resource $to
+     */
+    private function copyJsonContent(string $from, $to,
+                                     callable | null $filter = null): void {
+        if ($filter === null) {
+            copyFileContent($from, $to);
+        } else {
+            $data = json_decode(file_get_contents($from));
+            $data = array_values(array_filter($data, $filter));
+            fwrite($to, json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+        }
     }
 
     private function computeHash(string $path): string {
