@@ -312,7 +312,7 @@ class FileChecker {
     private function copyJsonContent(string $from, $to,
                                      callable | null $filter = null): void {
         if ($filter === null) {
-            copyFileContent($from, $to);
+            $this->copyFileContent($from, $to);
         } else {
             $data = json_decode(file_get_contents($from));
             $data = array_values(array_filter($data, $filter));
