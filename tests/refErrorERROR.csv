@@ -9,7 +9,7 @@ duplicates;content_duplicate2.txt;ERROR;Duplicated file;Same hash as duplicates/
 duplicates;content_duplicate1.txt;ERROR;Duplicated file;Same hash as duplicates/child/content_duplicate1.txt
 duplicates;name_duplicate.txt;ERROR;Duplicated file;File names duplication with name_Duplicate.txt on a case-insensititve filesystems
 notAcceptedFormat;airboat.obj;ERROR;Unknown MIME;Content type not recognized by the DROID
-notAcceptedFormat;image.avif;ERROR;FilecheckerTest;MIME : not accepted, extension avif: not accepted
+notAcceptedFormat;image.avif;ERROR;Format not accepted;MIME : not accepted, extension avif: not accepted
 notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;PDF/A rule 6.7.2 violated: The document catalog dictionary of a conforming file shall contain the Metadata key. The metadata stream dictionary shall contain entry Type with value /Metadata and entry Subtype with value /XML
 notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;"PDF/A rule 6.7.3 violated: The value of Author entry from the document information dictionary, if present, and its analogous XMP property ""dc:creator"" shall be equivalent. dc:creator shall contain exactly one entry"
 notAcceptedFormat;not_PDF_A.pdf;ERROR;PDF;PDF/A rule 6.2.3.3 violated: DeviceRGB may be used only if the file has a PDF/A-1 OutputIntent that uses an RGB colour space
