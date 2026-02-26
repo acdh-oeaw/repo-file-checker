@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?xml-model href="http://music-encoding.org/schema/4.0.1/mei-all.rng" type="application/xml" schematypens="http://relaxng.org/ns/structure/1.0"?>
+<mei xmlns="http://www.music-encoding.org/ns/mei" meiversion="4.0.1">
+  <meiHead>
+    <fileDesc>
+      <titleStmt>
+        <title>Example of a Minimal header</title>
+        <composer>
+          <persName role="creator" codedval="118611666" auth="GND" auth.uri="http://d-nb.info/gnd/">Robert Schumann</persName>
+        </composer>
+        <respStmt>
+          <persName role="encoder">Mateusz Żółtak</persName>
+        </respStmt>
+      </titleStmt>
+      <pubStmt>
+        <unpub>Just a test</unpub>
+      </pubStmt>
+    </fileDesc>
+    <encodingDesc>
+      <appInfo>
+        <application version="1.0.1" xml:id="fooBar_v1.0.1">
+          <name>FooBar</name>
+          <ptr target="http://foo.bar/"/>
+        </application>
+      </appInfo>
+    </encodingDesc>
+    <revisionDesc>
+      <change n="1">
+        <respStmt>
+          <persName>Mateusz Żółtak</persName>
+        </respStmt>
+        <changeDesc><p>description</p></changeDesc>
+        <date isodate="2023-07-27T17:11:38+02:00"/>
+      </change>
+    </revisionDesc>
+  </meiHead>
+  <music/>
+</mei>
