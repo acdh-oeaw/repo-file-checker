@@ -154,6 +154,12 @@ class FileInfo {
                 case 'x-fmt/280':
                     $fi->specialType = self::SPECIAL_XSD;
                     break;
+                case 'fmt/965':
+                    $fi->mime        = 'application/mei+xml';
+                    if ($fi->extension === 'xml') {
+                        $fi->droidExtMismatch = false;
+                    }
+                    break;
             }
         }
 

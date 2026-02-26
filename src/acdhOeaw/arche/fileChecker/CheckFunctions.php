@@ -97,7 +97,7 @@ class CheckFunctions {
             foreach ($i->extensions as $j) {
                 $this->archeFormatsByExtension[$j] = min($i->ARCHE_conformance, $this->archeFormatsByExtension[$j] ?? 'preferred');
             }
-            foreach ($i->MIME_type as $j) {
+            foreach ([...$i->MIME_type, ...$i->Informal_MIME_type] as $j) {
                 $this->archeFormatsByMime[$j] = max($i->ARCHE_conformance, $this->archeFormatsByMime[$j] ?? '');
             }
         }
@@ -264,7 +264,8 @@ class CheckFunctions {
      */
     #[CheckFile]
     public function check10Xml(FileInfo $fi, bool $force = false): void {
-        static $xmlMime = ['text/xml', 'application/xml', 'application/tei+xml'];
+        static $xmlMime = ['text/xml', 'application/xml', 'application/tei+xml',
+            'application/mei+xml'];
         static $xmlSkip = [FileInfo::SPECIAL_XSD];
         if (!$force && (!in_array($fi->mime, $xmlMime) || in_array($fi->specialType, $xmlSkip))) {
             return;
