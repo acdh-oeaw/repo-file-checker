@@ -10,30 +10,23 @@ jobs:
     - uses: actions/checkout@v6
     - name: composer
       run: composer update
-    - uses: actions/setup-java@v5
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-    - uses: mxschmitt/action-tmate@v3
+    #- uses: mxschmitt/action-tmate@v3
     - name: phpstan
       run:
         vendor/bin/phpstan analyze -l 6 src bin/arche-filechecker tests
-    - name: integration tests
+    - name: unit tests
       run: |
         mkdir -p build/logs
         docker run -t --rm -v `pwd`:/mnt -w /mnt -e LC_ALL=C.utf8 -e LANG=C.utf8 -e XDEBUG_MODE=coverage --entrypoint /mnt/vendor/bin/phpunit acdhch/arche-ingest
+    - name: integration tests
         RET=1
         docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/bin/arche-filechecker acdhch/arche-ingest /mnt/tests/data/ /mnt/tests/reports/ || RET=0
         exit $RET
-    - name: unit tests
-      run: XDEBUG_MODE=coverage vendor/bin/phpunit
-    #- name: coveralls
-    #  run: |
-    #    export COVERALLS_RUN_LOCALLY=1
-    #    export COVERALLS_REPO_TOKEN=${{ secrets.coverallsToken }}
-    #    rm -fR composer.json composer.lock vendor
-    #    composer require php-coveralls/php-coveralls
-    #    php vendor/bin/php-coveralls -v
-    # current phpunit tests are still only integration ones - the filechecker is called using its CLI interface
-    # and the output is checked so the coverage computed by the phpunit is 0
+    - name: coveralls
+      run: |
+        export COVERALLS_RUN_LOCALLY=1
+        export COVERALLS_REPO_TOKEN=${{ secrets.coverallsToken }}
+        rm -fR composer.json composer.lock vendor
+        composer require php-coveralls/php-coveralls
+        php vendor/bin/php-coveralls -v
 

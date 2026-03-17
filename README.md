@@ -1,7 +1,7 @@
 ﻿# repo-filechecker 
 
 [![Latest Stable Version](https://poser.pugx.org/acdh-oeaw/repo-file-checker/v/stable)](https://packagist.org/packages/acdh-oeaw/repo-file-checker)
-![Build status](https://github.com/acdh-oeaw/repo-file-checker/workflows/phpunit/badge.svg?branch=master)
+[![Build Status](https://github.com/acdh-oeaw/repo-file-checker/actions/workflows/test.yml/badge.svg?branch=master)](https://github.com/acdh-oeaw/repo-file-checker/actions/workflows/test.yml)
 [![Coverage Status](https://coveralls.io/repos/github/acdh-oeaw/repo-file-checker/badge.svg?branch=master)](https://coveralls.io/github/acdh-oeaw/repo-file-checker?branch=master)
 [![License](https://poser.pugx.org/acdh-oeaw/repo-file-checker/license)](https://packagist.org/packages/acdh-oeaw/repo-file-checker)
 

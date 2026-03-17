@@ -42,6 +42,8 @@ if [ ! -d "$CDIR/droid" ] ; then
 
     $CDIR/droid/droid.sh -d
 fi
+# update DROID signatures
+$CDIR/droid/droid.sh -d
 
 if [ ! -d "$CDIR/verapdf" ] ; then
     echo "### Installing veraPDF"
