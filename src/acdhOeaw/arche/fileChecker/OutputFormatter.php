@@ -69,7 +69,7 @@ class OutputFormatter {
             self::FORMAT_JSONLINES => json_encode($data, self::JSON_FLAGS) . "\n",
             self::FORMAT_JSON => ($this->first ? '' : ",\n") . json_encode($data, self::JSON_FLAGS),
             self::FORMAT_CSV => implode(self::CSV_SEPARATOR, array_map(fn($x) => is_bool($x) ? ($x ? 'yes' : 'no') : (is_string($x) ? self::CSV_ESCAPE . str_replace(self::CSV_ESCAPE, self::CSV_ESCAPE . self::CSV_ESCAPE, $x) . self::CSV_ESCAPE : $x), $data)) . "\n",
-            default => throw new \RuntimeException('worng output format'),
+            default => throw new \RuntimeException('wrong output format'),
         };
         fwrite($this->fh, $data);
         $this->first = false;

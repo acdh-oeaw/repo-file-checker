@@ -63,7 +63,7 @@ try {
     $ret = $ch->check($args->directoryToCheck, $args->continue);
     $ch->generateReports($args->csv, $args->html);
 
-    if (!empty($args->redmineId)) {
+    if (!empty($args->redmineIssueId)) {
         $redmine   = new Redmine($args->redmineApiUrl ?? '', $args->redmineToken ?? $args->redmineUser ?? '', ($args->redminePswd ?? ''));
         $redmineId = $redmine->updateIssue(
             $args->mainIssueId, 'Run repo-file-checker', $ret,

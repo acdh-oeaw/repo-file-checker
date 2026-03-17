@@ -117,15 +117,15 @@ class FileChecker {
      */
     public function check(string $dir, bool $continue = false,
                           bool $sortDroidOutput = false): bool {
-        $this->checkDir    = realpath($dir);
+        $checkDir          = realpath($dir);
         $this->noErrors    = true;
         $outputPath        = "$this->reportDir/fileInfo.jsonl";
         $this->checkOutput = new OutputFormatter($outputPath, OutputFormatter::FORMAT_JSONLINES, null, $continue);
 
-        if ($this->checkDir === false) {
-            echo "\nERROR: Directory '$dir' does not exist\n";
-            return false;
+        if ($checkDir === false) {
+            throw new FileCheckerException("ERROR: Directory '$dir' does not exist");
         }
+        $this->checkDir = $checkDir;
 
         echo "\n### Running DROID...\n\n";
         $droidOutput       = $this->runDroid($sortDroidOutput, $continue);
