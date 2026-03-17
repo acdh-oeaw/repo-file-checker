@@ -56,12 +56,21 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
         if (!file_exists(__DIR__ . '/data/emptyDir')) {
             mkdir(__DIR__ . '/data/emptyDir'); // can not be stored by git
         }
+    }
 
+    public function testRun(): void {
         $ch = new FileChecker(self::DEFAULT_OPTS);
         $ch->check(__DIR__ . '/data', false, true);
         $ch->generateReports(true, true);
+        $this->assertFileExists(self::REPORTS_DIR . '/fileList.json');
+        $this->assertFileExists(self::REPORTS_DIR . '/directoryList.json');
+        $this->assertFileExists(self::REPORTS_DIR . '/error.json');
     }
 
+    /**
+     * 
+     * @depends testRun
+     */
     public function testCsv(): void {
         $filesCsv  = $this->readCsv(self::REPORTS_DIR . '/fileList.csv', false);
         $filesJson = json_decode(file_get_contents(self::REPORTS_DIR . '/fileList.json'), true);
@@ -76,6 +85,10 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
         $this->assertEquals($errorsJson, $errorsCsv);
     }
 
+    /**
+     * 
+     * @depends testRun
+     */
     public function testDirectoryList(): void {
         $skipLastModified = function ($x) {
             unset($x['lastModified']);
@@ -92,6 +105,10 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
         $this->assertEquals($expected, $actual);
     }
 
+    /**
+     * 
+     * @depends testRun
+     */
     public function testFileList(): void {
         $skipLastModified = function ($x) {
             unset($x['lastModified']);
@@ -107,14 +124,26 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
         $this->assertEquals($expected, $actual);
     }
 
+    /**
+     * 
+     * @depends testRun
+     */
     public function testErrorsInfo(): void {
         $this->errorTest('INFO');
     }
 
+    /**
+     * 
+     * @depends testRun
+     */
     public function testErrorsWarning(): void {
         $this->errorTest('WARNING');
     }
 
+    /**
+     * 
+     * @depends testRun
+     */
     public function testErrorsError(): void {
         $this->errorTest('ERROR');
     }

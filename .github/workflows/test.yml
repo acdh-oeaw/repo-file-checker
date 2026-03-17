@@ -10,14 +10,15 @@ jobs:
     - uses: actions/checkout@v6
     - name: composer
       run: composer update
-    - uses: mxschmitt/action-tmate@v3
+    #- uses: mxschmitt/action-tmate@v3
     - name: phpstan
       run:
         vendor/bin/phpstan analyze -l 6 src bin/arche-filechecker tests
     - name: unit tests
       run: |
         mkdir -p build/logs
-        docker run -t --rm -v `pwd`:/mnt -w /mnt -e LC_ALL=C.utf8 -e LANG=C.utf8 -e XDEBUG_MODE=coverage --entrypoint /mnt/vendor/bin/phpunit acdhch/arche-ingest
+        # same mount path in host and container so that coveralls can match files in the host afterwords
+        docker run -t --rm -v `pwd`:`pwd` -w `pwd` -e LC_ALL=C.utf8 -e LANG=C.utf8 -e XDEBUG_MODE=coverage --entrypoint `pwd`/vendor/bin/phpunit acdhch/arche-ingest
     - name: integration tests
       run: |
         RET=1
