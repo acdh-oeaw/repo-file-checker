@@ -10,6 +10,9 @@ jobs:
     - uses: actions/checkout@v6
     - name: composer
       run: composer update
+    - uses: actions/setup-java@v5
+      with:
+        java-version: '21'
     - uses: mxschmitt/action-tmate@v3
     - name: phpstan
       run:
