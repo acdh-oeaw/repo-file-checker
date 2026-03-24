@@ -160,6 +160,9 @@ class FileInfo {
                         $fi->droidExtMismatch = false;
                     }
                     break;
+                case 'fmt/1678': // MATLAB code
+                case 'fmt/938':  // Python code
+                    $fi->mime = 'text/plain';
             }
         }
 
