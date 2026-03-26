@@ -266,7 +266,7 @@ class CheckFunctions {
     public function check10Xml(FileInfo $fi, bool $force = false): void {
         static $xmlMime = ['text/xml', 'application/xml', 'application/tei+xml',
             'application/mei+xml'];
-        static $xmlSkip = [FileInfo::SPECIAL_XSD];
+        static $xmlSkip = [FileInfo::SPECIAL_XSD, FileInfo::SPECIAL_RNG];
         if (!$force && (!in_array($fi->mime, $xmlMime) || in_array($fi->specialType, $xmlSkip))) {
             return;
         }

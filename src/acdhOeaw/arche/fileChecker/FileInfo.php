@@ -47,6 +47,7 @@ class FileInfo {
     const OUTPUT_DIRLIST  = 'dirList';
     const SPECIAL_BAGIT   = 'bagit';
     const SPECIAL_XSD     = 'xsd';
+    const SPECIAL_RNG     = 'rng';
     const ERR_REMOVED     = 'Removed';
     const ERR_SYSTEM_FILE = 'SystemFile';
     const FILE_LIST_SKIP  = [
@@ -160,9 +161,13 @@ class FileInfo {
                         $fi->droidExtMismatch = false;
                     }
                     break;
+                case 'fmt/101':
+                    self::handleXml($fi);
+                    break;
                 case 'fmt/1678': // MATLAB code
                 case 'fmt/938':  // Python code
                     $fi->mime = 'text/plain';
+                    break;
             }
         }
 
@@ -174,6 +179,19 @@ class FileInfo {
             throw new \RuntimeException("Unknown output format $format");
         }
         return implode(OutputFormatter::CSV_SEPARATOR, self::$outputColumns[$format]) . "\n";
+    }
+
+    /**
+     * Handles corner cases being recognized as XML by the DROID
+     */
+    static private function handleXml(self $fi): void {
+        switch ($fi->extension) {
+            case 'rng':
+                // funnily we can't really check it's validity
+                $fi->droidExtMismatch = false;
+                $fi->specialType      = self::SPECIAL_RNG;
+                break;
+        }
     }
 
     public string $path;
