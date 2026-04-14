@@ -162,6 +162,8 @@ class FileInfo {
                     }
                     break;
                 case 'fmt/101':
+                case 'fmt/1476': # TEI
+                case 'fmt/1477': # TEI
                     self::handleXml($fi);
                     break;
                 case 'fmt/1678': // MATLAB code
@@ -189,6 +191,7 @@ class FileInfo {
             case 'rng':
                 // funnily we can't really check it's validity
                 $fi->droidExtMismatch = false;
+                $fi->mime             = 'application/xml';
                 $fi->specialType      = self::SPECIAL_RNG;
                 break;
         }
