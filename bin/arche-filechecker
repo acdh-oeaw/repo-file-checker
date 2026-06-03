@@ -66,10 +66,14 @@ try {
     if (!empty($args->redmineIssueId)) {
         $redmine   = new Redmine($args->redmineApiUrl ?? '', $args->redmineToken ?? $args->redmineUser ?? '', ($args->redminePswd ?? ''));
         $redmineId = $redmine->updateIssue(
+            /** @phpstan-ignore property.notFound */
             $args->mainIssueId, 'Run repo-file-checker', $ret,
             issueStatus: $ret ? 'Resolved' : 'In Progress',
+            /** @phpstan-ignore property.notFound */
             done: $ret ? $args->redmineDone : 100,
+            /** @phpstan-ignore property.notFound */
             message: $args->redmineMessage,
+            /** @phpstan-ignore property.notFound */
             append: $args->redmineAppend
         );
         echo "Redmine issue $redmineId updated successfully\n";

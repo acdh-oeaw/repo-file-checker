@@ -38,19 +38,20 @@ use finfo;
  */
 class FileInfo {
 
-    const DROID_TYPEDIR   = 'Folder';
-    const DROID_TYPEFILE  = 'File';
-    const DROID_TYPELINK  = 'Symlink';
-    const UNKNOWN_MIME    = 'unknown';
-    const OUTPUT_ERROR    = 'error';
-    const OUTPUT_FILELIST = 'fileList';
-    const OUTPUT_DIRLIST  = 'dirList';
-    const SPECIAL_BAGIT   = 'bagit';
-    const SPECIAL_XSD     = 'xsd';
-    const SPECIAL_RNG     = 'rng';
-    const ERR_REMOVED     = 'Removed';
-    const ERR_SYSTEM_FILE = 'SystemFile';
-    const FILE_LIST_SKIP  = [
+    const DROID_TYPEDIR      = 'Folder';
+    const DROID_TYPEFILE     = 'File';
+    const DROID_TYPELINK     = 'Symlink';
+    const UNKNOWN_MIME       = 'unknown';
+    const OUTPUT_ERROR       = 'error';
+    const OUTPUT_FILELIST    = 'fileList';
+    const OUTPUT_DIRLIST     = 'dirList';
+    const SPECIAL_BAGIT      = 'bagit';
+    const SPECIAL_XSD        = 'xsd';
+    const SPECIAL_RNG        = 'rng';
+    const SPECIAL_SCHEMATRON = 'sch';
+    const ERR_REMOVED        = 'Removed';
+    const ERR_SYSTEM_FILE    = 'SystemFile';
+    const FILE_LIST_SKIP     = [
         self::ERR_REMOVED,
         self::ERR_SYSTEM_FILE,
     ];
@@ -153,7 +154,13 @@ class FileInfo {
         foreach ($fi->droidFormats as $i) {
             switch ($i->puid) {
                 case 'x-fmt/280':
-                    $fi->specialType = self::SPECIAL_XSD;
+                    $fi->specialType = match (strtolower($fi->extension)) {
+                        'xsd' => self::SPECIAL_XSD,
+                        'sch' => self::SPECIAL_SCHEMATRON,
+                        'rng' => self::SPECIAL_RNG,
+                        default => throw new \RuntimeException('Unsupported DROID x-fmt/280 file extension ' . $fi->extension),
+                    };
+                    $fi->droidExtMismatch = false;
                     break;
                 case 'fmt/965':
                     $fi->mime        = 'application/mei+xml';

@@ -170,9 +170,9 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
 
         $this->assertFileExists($path);
         $f      = fopen($path, 'rb');
-        $header = fgetcsv($f, null, self::CSV_SEP);
+        $header = fgetcsv($f, null, self::CSV_SEP, escape: "");
         $data   = [];
-        while ($line   = fgetcsv($f, null, self::CSV_SEP)) {
+        while ($line   = fgetcsv($f, null, self::CSV_SEP, escape: "")) {
             if (is_array($line) && count($line) === count($header)) {
                 if ($shorten) {
                     $line = array_map(fn($x) => explode("\n", $x)[0], $line);
@@ -238,8 +238,8 @@ class FilecheckerTest extends \PHPUnit\Framework\TestCase {
             $av = $a['directory'] . '/' . $a['filename'];
             $bv = $b['directory'] . '/' . $b['filename'];
             foreach ($otherCols as $i) {
-                $av .= '#' . $a[$i];
-                $bv .= '#' . $b[$i];
+                $av .= '#' . ($a[$i] ?? '');
+                $bv .= '#' . ($b[$i] ?? '');
             }
             return $av <=> $bv;
         };

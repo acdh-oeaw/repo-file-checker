@@ -147,13 +147,13 @@ class FileChecker {
         }
 
         $fh             = fopen($droidOutput, 'rb');
-        $header         = fgetcsv($fh);
+        $header         = fgetcsv($fh, escape: "");
         $formatCountPos = array_search('FORMAT_COUNT', $header);
         $dirs           = [];
         $hashes         = [];
         $stdNames       = [];
         while (!feof($fh)) {
-            $line = fgetcsv($fh);
+            $line = fgetcsv($fh, escape: "");
             if (is_array($line) && count($line) > $formatCountPos) {
                 $fileInfo = FileInfo::fromDroid($line, $header);
 
@@ -370,9 +370,9 @@ class FileChecker {
 
         if ($sortOutput) {
             $fh     = fopen($droidOutput, 'rb');
-            $header = fgetcsv($fh);
+            $header = fgetcsv($fh, escape: "");
             $data   = [];
-            while ($l      = fgetcsv($fh)) {
+            while ($l      = fgetcsv($fh, escape: "")) {
                 if (count($l) > 2) {
                     $data[$l[3]] = $l;
                 }
@@ -380,9 +380,9 @@ class FileChecker {
             fclose($fh);
             ksort($data);
             $fh = fopen($droidOutput, 'wb');
-            fputcsv($fh, $header);
+            fputcsv($fh, $header, escape: "");
             foreach ($data as $l) {
-                fputcsv($fh, $l);
+                fputcsv($fh, $l, escape: "");
             }
             fclose($fh);
         }

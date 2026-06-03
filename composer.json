@@ -24,7 +24,7 @@
         "ext-bz2": "*",
         "guiguiboy/php-cli-progress-bar": "0.0.4",
         "zozlak/argparse": "^1",
-        "whikloj/bagittools": "^4.2.3",
+        "whikloj/bagittools": "^6",
         "acdh-oeaw/arche-assets": "^3.9.4",
         "acdh-oeaw/arche-lib-ingest": "^4 | ^5"
     },

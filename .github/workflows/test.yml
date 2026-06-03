@@ -6,25 +6,37 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: [8.3, 8.4, 8.5]
     steps:
     - uses: actions/checkout@v6
+    - uses: shivammathur/setup-php@v2
+      with:
+        php-version: ${{ matrix.php }}
+        coverage: xdebug
+      env:
+        fail-fast: true
     - name: composer
       run: composer update
-    #- uses: mxschmitt/action-tmate@v3
     - name: phpstan
       run:
-        vendor/bin/phpstan analyze -l 6 src bin/arche-filechecker tests
+        vendor/bin/phpstan analyze -l 6 src tests bin/*
+    #- uses: mxschmitt/action-tmate@v3
     - name: unit tests
+      if: ${{ matrix.php == 8.5 }}
       run: |
         mkdir -p build/logs
         # same mount path in host and container so that coveralls can match files in the host afterwords
-        docker run -t --rm -v `pwd`:`pwd` -w `pwd` -e LC_ALL=C.utf8 -e LANG=C.utf8 -e XDEBUG_MODE=coverage --entrypoint `pwd`/vendor/bin/phpunit acdhch/arche-ingest
+        docker run -t --rm -v `pwd`:`pwd` -w `pwd` -e LC_ALL=C.utf8 -e LANG=C.utf8 -e XDEBUG_MODE=coverage --entrypoint `pwd`/vendor/bin/phpunit acdhch/arche-ingest --display-all-issues
     - name: integration tests
+      if: ${{ matrix.php == 8.5 }}
       run: |
         RET=1
         docker run -t --rm -v `pwd`:/mnt --entrypoint /mnt/bin/arche-filechecker acdhch/arche-ingest /mnt/tests/data/ /mnt/tests/reports/ || RET=0
         exit $RET
     - name: coveralls
+      if: ${{ matrix.php == 8.5 }}
       run: |
         export COVERALLS_RUN_LOCALLY=1
         export COVERALLS_REPO_TOKEN=${{ secrets.coverallsToken }}
