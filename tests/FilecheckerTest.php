@@ -27,13 +27,14 @@
 namespace acdhOeaw\arche\fileChecker\tests;
 
 use acdhOeaw\arche\fileChecker\FileChecker;
+use PHPUnit\Framework\TestCase;
 
 /**
  * Description of FilecheckerTest
  *
  * @author zozlak
  */
-class FilecheckerTest extends \PHPUnit\Framework\TestCase {
+class FilecheckerTest extends TestCase {
 
     const CSV_SEP      = ';';
     const TMP_DIR      = '/tmp/filechecker';
