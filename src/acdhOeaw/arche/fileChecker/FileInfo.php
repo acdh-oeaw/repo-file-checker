@@ -177,6 +177,9 @@ class FileInfo {
                 case 'fmt/938':  // Python code
                     $fi->mime = 'text/plain';
                     break;
+                case 'fmt/1544':
+                    $fi->mime = 'application/pfsx+xml';
+                    break;
             }
         }
 
