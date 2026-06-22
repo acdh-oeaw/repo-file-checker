@@ -63,6 +63,13 @@ class CheckFunctions {
     private string $tmpDir;
     private string $gdalCalcPath = '/usr/bin/gdal_calc.py';
     private string $gdalinfoPath = '/usr/bin/gdalinfo';
+    private string $jingPath     = '/usr/bin/jing';
+
+    /**
+     * 
+     * @var array<string, string>
+     */
+    private array $relaxNgSchemas = [];
 
     /**
      * 
@@ -83,6 +90,10 @@ class CheckFunctions {
         if (!file_exists($this->gdalinfoPath)) {
             $this->gdalinfoPath = '';
             echo "WARNING: gdalinfo not found, images won't be checked for compression and projection\n";
+        }
+        if (!file_exists($this->jingPath)) {
+            $this->jingPath = '';
+            echo "WARNING: jing path not found, RelaxNG schema validation won't be performed\n";
         }
         if (!file_exists(self::DROID_PATH) || !file_exists(self::VERAPDF_PATH) || count(scandir(self::SIGNATURES_DIR)) < 3) {
             exec(__DIR__ . '/../../../../aux/install_deps.sh 2>&1', $output, $ret);
@@ -123,6 +134,14 @@ class CheckFunctions {
                 chr(132) . chr(49) . chr(149) . chr(51), // GB18030
             ],
         ];
+    }
+
+    public function __destruct() {
+        foreach ($this->relaxNgSchemas as $i) {
+            if (file_exists($i)) {
+                unlink($i);
+            }
+        }
     }
 
     #[CheckDir]
@@ -303,18 +322,36 @@ class CheckFunctions {
                 if (!empty($href)) {
                     $fn = false;
                     if (str_ends_with(strtolower($href), '.rng') || $type === 'application/relax-ng-compact-syntax' || $ns === 'http://relaxng.org/ns/structure/1.0') {
-                        $fn = 'relaxNGValidateSource';
+                        $hrefOriginal = $href;
+                        if (str_starts_with(strtolower($href), 'http')) {
+                            $href = $this->getRelaxNgSchemaPath($href);
+                        }
+                        if (!file_exists($href)) {
+                            $fi->error('XML', "Failed to read schema from $href");
+                            continue;
+                        }
+                        $cmd     = sprintf(
+                            "%s %s %s 2>/dev/null",
+                            escapeshellcmd($this->jingPath),
+                            escapeshellarg($href),
+                            escapeshellarg($fi->path)
+                        );
+                        $output  = [];
+                        $retCode = null;
+                        exec($cmd, $output, $retCode);
+                        if ($retCode === 0) {
+                            $fi->info('XML', "Schema successfully validated against $hrefOriginal");
+                        } else {
+                            $fi->error('XML', "Schema validation against $href failed with: " . implode("\n", $output));
+                        }
+                        $valid[] = $res;
                     }
                     if (str_ends_with(strtolower($href), '.xsd') || $ns === 'http://www.w3.org/2001/XMLSchema') {
-                        $fn = 'schemaValidateSource';
-                    }
-                    if ($fn) {
                         if (!str_starts_with(strtolower($href), 'http')) {
                             $href = $fi->directory . '/' . $href;
                             if (!file_exists($href)) {
                                 $fi->error('XML', "Failed to read schema from $href");
                                 continue;
-                                ;
                             }
                         }
                         $schema = @file_get_contents($href);
@@ -322,7 +359,7 @@ class CheckFunctions {
                             $fi->error('XML', "Failed to read schema from $href");
                             continue;
                         }
-                        $res = $xml->$fn($schema);
+                        $res = $xml->schemaValidateSource($schema);
                         if ($res) {
                             $fi->info('XML', "Schema successfully validated against $href");
                         } else {
@@ -552,5 +589,18 @@ class CheckFunctions {
             false => $za->getStatusString(),
             default => 'Other error',
         };
+    }
+
+    private function getRelaxNgSchemaPath(string $href): string {
+        if (!isset($this->relaxNgSchemas[$href])) {
+            $schema = file_get_contents($href);
+            if (empty($schema)) {
+                return $href; // it will fail file_exists() check
+            }
+            $filename                    = tempnam(sys_get_temp_dir(), 'schema');
+            file_put_contents($filename, $schema);
+            $this->relaxNgSchemas[$href] = $filename;
+        }
+        return $this->relaxNgSchemas[$href];
     }
 }
