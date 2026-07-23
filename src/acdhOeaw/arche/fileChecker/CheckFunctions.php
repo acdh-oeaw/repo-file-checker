@@ -32,6 +32,8 @@ use SimpleXMLElement;
 use UnexpectedValueException;
 use ZipArchive;
 use whikloj\BagItTools\Bag;
+use Eclipxe\XmlSchemaValidator\Schema;
+use Eclipxe\XmlSchemaValidator\Schemas;
 use acdhOeaw\arche\fileChecker\attributes\CheckFile;
 use acdhOeaw\arche\fileChecker\attributes\CheckDir;
 
@@ -353,11 +355,11 @@ class CheckFunctions {
                                 $fi->error('XML', "Failed to read schema from $href");
                                 continue;
                             }
-                        }
-                        $schema = @file_get_contents($href);
-                        if ($schema === false) {
-                            $fi->error('XML', "Failed to read schema from $href");
-                            continue;
+                            $schema = file_get_contents($href);
+                        } else {
+                            $schema = new Schemas();
+                            $schema->insert(new Schema('', $href));
+                            $schema = $schema->getImporterXsd();
                         }
                         $res = $xml->schemaValidateSource($schema);
                         if ($res) {

@@ -26,7 +26,8 @@
         "zozlak/argparse": "^1",
         "whikloj/bagittools": "^6",
         "acdh-oeaw/arche-assets": "^3.9.4",
-        "acdh-oeaw/arche-lib-ingest": "^4 | ^5"
+        "acdh-oeaw/arche-lib-ingest": "^4 | ^5",
+        "eclipxe/xmlschemavalidator": "^3.0"
     },
     "autoload": {
         "psr-4": {
