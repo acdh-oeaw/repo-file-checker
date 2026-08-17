@@ -327,6 +327,8 @@ class CheckFunctions {
                         $hrefOriginal = $href;
                         if (str_starts_with(strtolower($href), 'http')) {
                             $href = $this->getRelaxNgSchemaPath($href);
+                        } elseif (!str_starts_with($href, '/')) {
+                            $href = $fi->directory . '/' . $href;
                         }
                         if (!file_exists($href)) {
                             $fi->error('XML', "Failed to read schema from $href");
