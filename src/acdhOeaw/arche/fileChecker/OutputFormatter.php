@@ -45,6 +45,7 @@ class OutputFormatter {
      * @var resource
      */
     private $fh;
+    private string $path;
     private string $format;
     private bool $first = true;
 
@@ -54,6 +55,7 @@ class OutputFormatter {
             throw new FileCheckerException('continuing is possible only for JSON lines and CSV formats');
         }
 
+        $this->path   = $filename;
         $this->fh     = fopen($filename, $continue ? 'a' : 'w') ?: throw new \RuntimeException("Failed to open $filename for writing");
         $this->format = $format;
 
@@ -64,13 +66,17 @@ class OutputFormatter {
         }
     }
 
-    public function write(mixed $data): void {
-        $data        = match ($this->format) {
+    public function write(mixed $data, bool $forceReopen = false): void {
+        $data = match ($this->format) {
             self::FORMAT_JSONLINES => json_encode($data, self::JSON_FLAGS) . "\n",
             self::FORMAT_JSON => ($this->first ? '' : ",\n") . json_encode($data, self::JSON_FLAGS),
             self::FORMAT_CSV => implode(self::CSV_SEPARATOR, array_map(fn($x) => is_bool($x) ? ($x ? 'yes' : 'no') : (is_string($x) ? self::CSV_ESCAPE . str_replace(self::CSV_ESCAPE, self::CSV_ESCAPE . self::CSV_ESCAPE, $x) . self::CSV_ESCAPE : $x), $data)) . "\n",
             default => throw new \RuntimeException('wrong output format'),
         };
+        if ($forceReopen) {
+            fclose($this->fh);
+            $this->fh = fopen($this->path, 'a') ?: throw new \RuntimeException("Failed to open $this->path for writing");
+        }
         fwrite($this->fh, $data);
         $this->first = false;
     }

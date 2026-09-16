@@ -408,7 +408,7 @@ class CheckFunctions {
             if ($result->compliant ?? false) {
                 //$fi->info("PDF", "Compliant with the " . $result->profileName);
             } else {
-                foreach ($result->details?->ruleSummaries ?? [] as $i) {
+                foreach ($result->details->ruleSummaries ?? [] as $i) {
                     $fi->error("PDF", "PDF/A rule $i->clause violated: $i->description");
                 }
             }

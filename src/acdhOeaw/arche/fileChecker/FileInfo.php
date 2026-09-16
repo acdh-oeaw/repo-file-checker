@@ -284,7 +284,7 @@ class FileInfo {
         }
     }
 
-    public function save(OutputFormatter $handle, ?string $format = null): void {
+    public function save(OutputFormatter $handle, ?string $format = null, bool $forceReopen = false): void {
         // just dump object as it is
         if ($format === null) {
             $handle->write($this);
@@ -313,7 +313,7 @@ class FileInfo {
             $data[$i] = $this->$i ?? '';
         }
         if ($format !== self::OUTPUT_ERROR) {
-            $handle->write($data);
+            $handle->write($data, $forceReopen);
             return;
         }
 
@@ -325,7 +325,7 @@ class FileInfo {
                     $row[$k] = $v;
                 }
             }
-            $handle->write($row);
+            $handle->write($row, $forceReopen);
         }
     }
 }

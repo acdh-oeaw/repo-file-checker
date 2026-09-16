@@ -191,7 +191,7 @@ class FileChecker {
                     }
 
                     $fileInfo->assignHasCategory();
-                    $fileInfo->save($this->checkOutput);
+                    $fileInfo->save($this->checkOutput, null, true);
                     $this->progressBar->advance();
                 }
 

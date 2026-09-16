@@ -174,7 +174,7 @@ class FilecheckerTest extends TestCase {
         $header = fgetcsv($f, null, self::CSV_SEP, escape: "");
         $data   = [];
         while ($line   = fgetcsv($f, null, self::CSV_SEP, escape: "")) {
-            if (is_array($line) && count($line) === count($header)) {
+            if (count($line) === count($header)) {
                 if ($shorten) {
                     $line = array_map(fn($x) => explode("\n", $x)[0], $line);
                 }
