@@ -321,7 +321,8 @@ class CheckFunctions {
                 $type = $type[1] ?? '';
                 preg_match('`schematypens="([^"]+)"`', $child->nodeValue, $ns);
                 $ns   = $ns[1] ?? '';
-                if (!empty($href)) {
+                if (!empty($href) && !in_array($href, $fi->xmlSchemas)) {
+                    $fi->xmlSchemas[] = $href;
                     $fn = false;
                     if (str_ends_with(strtolower($href), '.rng') || $type === 'application/relax-ng-compact-syntax' || $ns === 'http://relaxng.org/ns/structure/1.0') {
                         $hrefOriginal = $href;

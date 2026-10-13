@@ -75,6 +75,10 @@ class FilecheckerTest extends TestCase {
     public function testCsv(): void {
         $filesCsv  = $this->readCsv(self::REPORTS_DIR . '/fileList.csv', false);
         $filesJson = json_decode(file_get_contents(self::REPORTS_DIR . '/fileList.json'), true);
+        foreach ($filesJson as &$i) {
+            $i['xmlSchemas'] = implode(',', $i['xmlSchemas']);
+        }
+        unset($i);
         $this->assertEquals($filesJson, $filesCsv);
 
         $dirsCsv  = $this->readCsv(self::REPORTS_DIR . '/directoryList.csv', false);

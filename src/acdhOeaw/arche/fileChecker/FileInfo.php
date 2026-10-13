@@ -62,7 +62,7 @@ class FileInfo {
      */
     static private array $outputColumns = [
         self::OUTPUT_FILELIST => ['directory', 'filename', 'type', 'size', 'lastModified',
-            'extension', 'mime', 'specialType', 'valid', 'hasCategory'],
+            'extension', 'mime', 'specialType', 'valid', 'hasCategory', 'xmlSchemas'],
         self::OUTPUT_DIRLIST  => ['path', 'lastModified', 'valid'],
         self::OUTPUT_ERROR    => ['directory', 'filename', 'severity', 'errorType',
             'errorMessage'],
@@ -229,6 +229,11 @@ class FileInfo {
     public bool $droidExtMismatch;
     public string $droidPuid;
     public ?string $specialType = null;
+    /**
+     * 
+     * @var array<string>
+     */
+    public array $xmlSchemas = [];
 
     /**
      * 

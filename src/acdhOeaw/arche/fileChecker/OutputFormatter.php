@@ -70,7 +70,7 @@ class OutputFormatter {
         $data = match ($this->format) {
             self::FORMAT_JSONLINES => json_encode($data, self::JSON_FLAGS) . "\n",
             self::FORMAT_JSON => ($this->first ? '' : ",\n") . json_encode($data, self::JSON_FLAGS),
-            self::FORMAT_CSV => implode(self::CSV_SEPARATOR, array_map(fn($x) => is_bool($x) ? ($x ? 'yes' : 'no') : (is_string($x) ? self::CSV_ESCAPE . str_replace(self::CSV_ESCAPE, self::CSV_ESCAPE . self::CSV_ESCAPE, $x) . self::CSV_ESCAPE : $x), $data)) . "\n",
+            self::FORMAT_CSV => implode(self::CSV_SEPARATOR, array_map(fn($x) => $this->serializeCsv($x), $data)) . "\n",
             default => throw new \RuntimeException('wrong output format'),
         };
         if ($forceReopen) {
@@ -94,5 +94,21 @@ class OutputFormatter {
         }
         fclose($this->fh);
         unset($this->fh);
+    }
+
+    private function serializeCsv(mixed $value, bool $quote = true): string {
+        if (is_bool($value)) {
+            return $value ? 'yes' : 'no';
+        }
+        if (is_string($value)) {
+            $e  = self::CSV_ESCAPE;
+            $ee = self::CSV_ESCAPE . self::CSV_ESCAPE;
+            return $quote ? $e . str_replace($e, $ee, $value) . $e : $value;
+        }
+        if (is_array($value)) {
+            $value = array_map(fn($x) => $this->serializeCsv($x, false), $value);
+            return $this->serializeCsv(implode(',', $value));
+        }
+        return (string) $value;
     }
 }
