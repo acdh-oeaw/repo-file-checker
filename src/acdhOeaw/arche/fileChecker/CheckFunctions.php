@@ -557,7 +557,7 @@ class CheckFunctions {
             }
         } finally {
             if (str_starts_with($root, $this->tmpDir)) {
-                system("rm -fR '$root'");
+                system("rm -fR " . escapeshellarg($root));
             }
         }
     }
