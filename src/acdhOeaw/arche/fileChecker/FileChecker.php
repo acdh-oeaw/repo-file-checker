@@ -44,6 +44,11 @@ class FileChecker {
     private string $tmpDir;
     private string $reportDir;
     private string $checkDir;
+    /**
+     * Should the fileInfo.jsonl file handle be reopened before each write?
+     * This could be needed for very long runs on an unreliable network storage.
+     */
+    private bool $forceReopen;
     private CheckFunctions $chkFunc;
     private bool $noErrors;
     private bool $skipWarnings;
@@ -92,6 +97,8 @@ class FileChecker {
             $this->hashAlgo = self::HASH_FALLBACK;
         }
 
+        $this->forceReopen = (bool) ($config['forceReopen'] ?? true);
+
         // initialize checks by introspecting the CheckFunctions class
         $rc = new ReflectionClass(CheckFunctions::class);
         foreach ($rc->getMethods(\ReflectionMethod::IS_PUBLIC) as $method) {
@@ -120,7 +127,7 @@ class FileChecker {
         $checkDir          = realpath($dir);
         $this->noErrors    = true;
         $outputPath        = "$this->reportDir/fileInfo.jsonl";
-        $this->checkOutput = new OutputFormatter($outputPath, OutputFormatter::FORMAT_JSONLINES, null, $continue);
+        $this->checkOutput = new OutputFormatter($outputPath, OutputFormatter::FORMAT_JSONLINES, null, $continue, $this->forceReopen);
 
         if ($checkDir === false) {
             throw new FileCheckerException("ERROR: Directory '$dir' does not exist");
@@ -191,7 +198,7 @@ class FileChecker {
                     }
 
                     $fileInfo->assignHasCategory();
-                    $fileInfo->save($this->checkOutput, null, true);
+                    $fileInfo->save($this->checkOutput, null);
                     $this->progressBar->advance();
                 }
 

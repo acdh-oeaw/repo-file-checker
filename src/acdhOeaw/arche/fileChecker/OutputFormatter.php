@@ -45,19 +45,16 @@ class OutputFormatter {
      * @var resource
      */
     private $fh;
-    private string $path;
-    private string $format;
     private bool $first = true;
 
-    public function __construct(string $filename, string $format,
-                                ?string $header = null, bool $continue = false) {
+    public function __construct(private string $path, private string $format,
+                                ?string $header = null, bool $continue = false,
+                                private bool $reopenOnWrite = false) {
         if ($continue && !in_array($format, [self::FORMAT_JSONLINES, self::FORMAT_CSV])) {
             throw new FileCheckerException('continuing is possible only for JSON lines and CSV formats');
         }
 
-        $this->path   = $filename;
-        $this->fh     = fopen($filename, $continue ? 'a' : 'w') ?: throw new \RuntimeException("Failed to open $filename for writing");
-        $this->format = $format;
+        $this->fh = fopen($path, $continue ? 'a' : 'w') ?: throw new \RuntimeException("Failed to open $path for writing");
 
         if ($format === self::FORMAT_JSON) {
             fwrite($this->fh, "[\n");
@@ -66,14 +63,14 @@ class OutputFormatter {
         }
     }
 
-    public function write(mixed $data, bool $forceReopen = false): void {
+    public function write(mixed $data): void {
         $data = match ($this->format) {
             self::FORMAT_JSONLINES => json_encode($data, self::JSON_FLAGS) . "\n",
             self::FORMAT_JSON => ($this->first ? '' : ",\n") . json_encode($data, self::JSON_FLAGS),
             self::FORMAT_CSV => implode(self::CSV_SEPARATOR, array_map(fn($x) => $this->serializeCsv($x), $data)) . "\n",
             default => throw new \RuntimeException('wrong output format'),
         };
-        if ($forceReopen) {
+        if ($this->reopenOnWrite) {
             fclose($this->fh);
             $this->fh = fopen($this->path, 'a') ?: throw new \RuntimeException("Failed to open $this->path for writing");
         }
